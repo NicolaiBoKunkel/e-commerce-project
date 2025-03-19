@@ -1,0 +1,40 @@
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "4000:4000"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+      - notification-service
+    environment:
+      - PORT=4000
+
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+
+  product-service:
+    build: ./services/product-service
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "5004:5004"
+    environment:
+      - PORT=5004
