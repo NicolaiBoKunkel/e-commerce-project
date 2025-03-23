@@ -6,7 +6,16 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Proxy requests to microservices
-app.use("/user", createProxyMiddleware({ target: "http://localhost:5001", changeOrigin: true }));
+app.use(
+  "/user",
+  createProxyMiddleware({
+    target: "http://user-service:5001",
+    changeOrigin: true,
+    pathRewrite: {
+      "^/user": "",
+    },
+  })
+);
 app.use("/product", createProxyMiddleware({ target: "http://localhost:5002", changeOrigin: true }));
 app.use("/order", createProxyMiddleware({ target: "http://localhost:5003", changeOrigin: true }));
 app.use("/notification", createProxyMiddleware({ target: "http://localhost:5004", changeOrigin: true }));

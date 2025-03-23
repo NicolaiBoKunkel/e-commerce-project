@@ -24,6 +24,8 @@ services:
       - DB_NAME=users_db
     depends_on:
       - postgres
+    volumes:
+      - ./services/user-service:/app
 
   product-service:
     build: ./services/product-service
