@@ -1,15 +1,15 @@
 services:
-  api-gateway:
-    build: ./api-gateway
+  postgres:
+    image: postgres:15
+    restart: always
     ports:
-      - "4000:4000"
-    depends_on:
-      - user-service
-      - product-service
-      - order-service
-      - notification-service
+      - "5432:5432"
     environment:
-      - PORT=4000
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
 
   user-service:
     build: ./services/user-service
@@ -17,6 +17,13 @@ services:
       - "5001:5001"
     environment:
       - PORT=5001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=users_db
+    depends_on:
+      - postgres
 
   product-service:
     build: ./services/product-service
@@ -38,3 +45,18 @@ services:
       - "5004:5004"
     environment:
       - PORT=5004
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "4000:4000"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+      - notification-service
+    environment:
+      - PORT=4000
+
+volumes:
+  postgres-data:
