@@ -11,6 +11,14 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  mongo:
+      image: mongo:6.0
+      restart: always
+      ports:
+        - "27017:27017"
+      volumes:
+        - mongo-data:/data/db
+
   user-service:
     build: ./services/user-service
     ports:
@@ -33,6 +41,12 @@ services:
       - "5002:5002"
     environment:
       - PORT=5002
+      - MONGO_URI=mongodb://mongo:27017/products_db
+    depends_on:
+      - mongo
+    volumes:
+      - ./services/product-service:/app
+
 
   order-service:
     build: ./services/order-service
@@ -62,3 +76,5 @@ services:
 
 volumes:
   postgres-data:
+  mongo-data:
+
