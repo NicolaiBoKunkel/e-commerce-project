@@ -54,6 +54,16 @@ services:
       - "5003:5003"
     environment:
       - PORT=5003
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=orders_db
+    depends_on:
+      - postgres
+    volumes:
+      - ./services/order-service:/app
+
 
   notification-service:
     build: ./services/notification-service
@@ -77,4 +87,3 @@ services:
 volumes:
   postgres-data:
   mongo-data:
-

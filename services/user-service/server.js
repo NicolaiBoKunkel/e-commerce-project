@@ -88,6 +88,13 @@ app.get("/health", (req, res) => {
 });
 
 
+app.get("/internal/users/:id", async (req, res) => {
+  const user = await User.findByPk(req.params.id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json(user);
+});
+
+
 connectWithRetry().then(() => {
   return sequelize.sync();
 }).then(() => {
