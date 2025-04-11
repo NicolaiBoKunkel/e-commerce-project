@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const axios = require("axios");
 
 const { sequelize, connectWithRetry } = require("./sequelize");
 const User = require("./models/User");
@@ -75,11 +76,20 @@ app.post("/login", async (req, res) => {
 });
 
 
-app.get("/profile", authMiddleware, (req, res) => {
-  res.json({
-    message: `Welcome ${req.user.username}! This is your profile.`,
-    user: req.user,
-  });
+app.get("/profile", authMiddleware, async (req, res) => {
+  try {
+    // Fetch orders from order-service
+    const orderResponse = await axios.get(`http://order-service:5003/order/user/${req.user.id}`);
+
+    res.json({
+      message: `Welcome ${req.user.username}! This is your profile.`,
+      user: req.user,
+      orders: orderResponse.data,
+    });
+  } catch (err) {
+    console.error("Failed to fetch orders:", err.message);
+    res.status(500).json({ message: "Could not fetch profile with orders" });
+  }
 });
 
 // Health check

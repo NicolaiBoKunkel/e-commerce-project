@@ -32,4 +32,15 @@ router.get("/:id", async (req, res) => {
   res.json(order);
 });
 
+
+router.get("/user/:userId", async (req, res) => {
+  try {
+    const orders = await Order.findAll({ where: { userId: req.params.userId } });
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 module.exports = router;
