@@ -16,9 +16,13 @@ app.use(
     },
   })
 );
+
 app.use("/product", createProxyMiddleware({ target: "http://product-service:5002", changeOrigin: true }));
 
+
 app.use("/order", createProxyMiddleware({ target: "http://order-service:5003", changeOrigin: true }));
+
+
 app.use("/notification", createProxyMiddleware({ target: "http://notification-service:5004", changeOrigin: true }));
 
 app.get("/", (req, res) => {

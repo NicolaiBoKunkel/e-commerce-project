@@ -7,7 +7,7 @@ const Order = sequelize.define("Order", {
     allowNull: false,
   },
   products: {
-    type: DataTypes.JSONB, // ✅ Store array of { productId, quantity }
+    type: DataTypes.JSONB,
     allowNull: false,
   },
   totalAmount: {
