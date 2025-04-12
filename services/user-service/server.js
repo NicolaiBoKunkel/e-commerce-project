@@ -3,12 +3,14 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const axios = require("axios");
+const cors = require("cors");
 
 const { sequelize, connectWithRetry } = require("./sequelize");
 const User = require("./models/User");
 
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 5001;
@@ -114,5 +116,3 @@ connectWithRetry().then(() => {
 }).catch((err) => {
   console.error("Failed to start user service:", err);
 });
-
-
