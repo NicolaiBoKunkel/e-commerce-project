@@ -15,7 +15,6 @@ interface Product {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -23,7 +22,7 @@ export default function ProductsPage() {
     price: "",
     category: "",
     stock: "",
-    imageUrl: "",
+    imageUrl: "", // used for either base64 OR direct URL
   });
 
   useEffect(() => {
@@ -44,63 +43,38 @@ export default function ProductsPage() {
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setImageFile(e.target.files[0]);
-    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result?.toString() || "";
+      setForm((prev) => ({ ...prev, imageUrl: base64 }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const addProduct = async () => {
-    let imageUrl = form.imageUrl;
+    const res = await fetch("http://localhost:4000/product/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
 
-    if (imageFile) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result?.toString() || "";
-        imageUrl = base64;
+    if (res.ok) {
+      const newProduct = await res.json();
+      setProducts((prev) => [...prev, newProduct]);
 
-        const res = await fetch("http://localhost:4000/product/products", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...form, imageUrl }),
-        });
-
-        if (res.ok) {
-          const newProduct = await res.json();
-          setProducts((prev) => [...prev, newProduct]);
-
-          // Reset form and file input
-          setForm({
-            name: "",
-            description: "",
-            price: "",
-            category: "",
-            stock: "",
-            imageUrl: "",
-          });
-          setImageFile(null);
-        }
-      };
-      reader.readAsDataURL(imageFile);
-    } else {
-      // fallback: no image uploaded
-      const res = await fetch("http://localhost:4000/product/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+      setForm({
+        name: "",
+        description: "",
+        price: "",
+        category: "",
+        stock: "",
+        imageUrl: "",
       });
-
-      if (res.ok) {
-        const newProduct = await res.json();
-        setProducts((prev) => [...prev, newProduct]);
-        setForm({
-          name: "",
-          description: "",
-          price: "",
-          category: "",
-          stock: "",
-          imageUrl: "",
-        });
-      }
+    } else {
+      alert("Failed to add product");
     }
   };
 
@@ -134,7 +108,7 @@ export default function ProductsPage() {
             <h2 className="text-xl font-semibold">{product.name}</h2>
             <p>{product.description}</p>
             <p className="text-sm text-gray-500">Category: {product.category}</p>
-            <p className="text-lg font-bold">${product.price.toFixed(2)}</p>
+            <p className="text-lg font-bold">${product.price}</p>
             <p className="text-sm">Stock: {product.stock}</p>
             <button
               onClick={() => deleteProduct(product._id)}
@@ -148,22 +122,47 @@ export default function ProductsPage() {
 
       <div className="max-w-md space-y-3">
         <h2 className="text-xl font-semibold">Add New Product</h2>
-        {Object.entries(form).map(([key, value]) => (
-          <input
-            key={key}
-            name={key}
-            value={value}
-            onChange={handleInput}
-            placeholder={key}
-            className="w-full p-2 border rounded"
+
+        {/* Image preview (if any) */}
+        {form.imageUrl && (
+          <img
+            src={form.imageUrl}
+            alt="Preview"
+            className="w-full h-40 object-cover rounded border"
           />
+        )}
+
+        {/* Text inputs */}
+        {Object.entries(form).map(([key, value]) => (
+          key !== "imageUrl" && (
+            <input
+              key={key}
+              name={key}
+              value={value}
+              onChange={handleInput}
+              placeholder={key}
+              className="w-full p-2 border rounded"
+            />
+          )
         ))}
+
+        {/* Image URL (manually entered) */}
+        <input
+          name="imageUrl"
+          value={form.imageUrl}
+          onChange={handleInput}
+          placeholder="Image URL"
+          className="w-full p-2 border rounded"
+        />
+
+        {/* File picker (overwrites imageUrl) */}
         <input
           type="file"
           accept="image/*"
           onChange={handleFile}
-          className="w-full border p-2 rounded"
+          className="w-full p-2 border rounded"
         />
+
         <button
           onClick={addProduct}
           className="bg-green-600 text-white px-4 py-2 rounded"

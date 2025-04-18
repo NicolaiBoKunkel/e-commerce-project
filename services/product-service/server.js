@@ -27,9 +27,9 @@ app.get("/products", async (req, res) => {
 });
 
 app.post("/products", async (req, res) => {
-  const { name, description, price, stock } = req.body;
+  const { name, description, price, stock, category, imageUrl } = req.body;
   try {
-    const product = await Product.create({ name, description, price, stock });
+    const product = await Product.create({ name, description, price, stock, category, imageUrl });
     res.status(201).json(product);
   } catch (err) {
     res.status(400).json({ error: err.message });
