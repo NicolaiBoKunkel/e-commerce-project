@@ -91,19 +91,29 @@ app.post("/login", async (req, res) => {
 
 app.get("/profile", authMiddleware, async (req, res) => {
   try {
-    // Fetch orders from order-service
-    const orderResponse = await axios.get(`http://order-service:5003/order/user/${req.user.id}`);
+    let orders;
+
+    if (req.user.role === "admin") {
+      // Admin gets all orders
+      const response = await axios.get(`http://order-service:5003/order`);
+      orders = response.data;
+    } else {
+      // Regular user gets only their orders
+      const response = await axios.get(`http://order-service:5003/order/user/${req.user.id}`);
+      orders = response.data;
+    }
 
     res.json({
-      message: `Welcome ${req.user.username}! This is your profile.`,
+      message: `Welcome ${req.user.username}!`,
       user: req.user,
-      orders: orderResponse.data,
+      orders,
     });
   } catch (err) {
     console.error("Failed to fetch orders:", err.message);
-    res.status(500).json({ message: "Could not fetch profile with orders" });
+    res.status(500).json({ message: "Could not fetch orders for profile" });
   }
 });
+
 
 // Health check
 app.get("/health", (req, res) => {

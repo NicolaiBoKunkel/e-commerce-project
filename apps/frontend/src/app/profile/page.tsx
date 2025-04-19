@@ -3,11 +3,25 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+interface ProductInOrder {
+  _id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
 interface Order {
   id: number;
   status: string;
   totalAmount: number;
   createdAt: string;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+  };
+  products: ProductInOrder[];
 }
 
 interface UserData {
@@ -58,16 +72,25 @@ export default function ProfilePage() {
       <p>Email: {data.user.email}</p>
       <p>Role: {data.user.role}</p>
 
-      <h2 className="text-2xl mt-8 mb-2 font-semibold">Your Orders:</h2>
+      <h2 className="text-2xl mt-8 mb-2 font-semibold">
+        {data.user.role === "admin" ? "All Orders:" : "Your Orders:"}
+      </h2>
+
       {data.orders.length === 0 ? (
         <p>No orders yet.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-4">
           {data.orders.map((order) => (
             <li
               key={order.id}
-              className="border p-4 rounded shadow-sm bg-white"
+              className="border p-4 rounded shadow-sm bg-black space-y-2"
             >
+              {data.user.role === "admin" && order.user && (
+                <p>
+                  <strong>User:</strong> {order.user.username} ({order.user.email})
+                </p>
+              )}
+
               <p>
                 <strong>Status:</strong> {order.status}
               </p>
@@ -78,6 +101,17 @@ export default function ProfilePage() {
                 <strong>Ordered:</strong>{" "}
                 {new Date(order.createdAt).toLocaleString()}
               </p>
+
+              <div>
+                <strong>Products:</strong>
+                <ul className="list-disc pl-6 mt-1">
+                  {order.products.map((product) => (
+                    <li key={product._id}>
+                      {product.name} — ${product.price.toFixed(2)} × {product.quantity}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </li>
           ))}
         </ul>
