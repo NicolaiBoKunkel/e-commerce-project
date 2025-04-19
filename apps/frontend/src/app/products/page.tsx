@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/UserContext";
 import Link from "next/link";
 
 interface Product {
@@ -19,6 +20,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState<{ [productId: string]: number }>({});
   const { cart, addToCart } = useCart();
+  const { user, token } = useAuth();
 
   const [form, setForm] = useState({
     name: "",
@@ -61,14 +63,17 @@ export default function ProductsPage() {
   const addProduct = async () => {
     const res = await fetch("http://localhost:4000/product/products", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify(form),
     });
-
+  
     if (res.ok) {
       const newProduct = await res.json();
       setProducts((prev) => [...prev, newProduct]);
-
+  
       setForm({
         name: "",
         description: "",
@@ -81,16 +86,21 @@ export default function ProductsPage() {
       alert("Failed to add product");
     }
   };
-
+  
   const deleteProduct = async (id: string) => {
     const res = await fetch(`http://localhost:4000/product/products/${id}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
     });
-
+  
     if (res.ok) {
       setProducts((prev) => prev.filter((p) => p._id !== id));
+    } else {
+      alert("Failed to delete product");
     }
-  };
+  };  
 
   const handleQuantityChange = (productId: string, value: number) => {
     setQuantities((prev) => ({
@@ -148,12 +158,14 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            <button
-              onClick={() => deleteProduct(product._id)}
-              className="absolute top-2 right-2 bg-red-500 text-white text-sm px-2 py-1 rounded"
-            >
-              Delete
-            </button>
+            {user?.role === "admin" && (
+              <button
+                onClick={() => deleteProduct(product._id)}
+                className="absolute top-2 right-2 bg-red-500 text-white text-sm px-2 py-1 rounded"
+              >
+                Delete
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -195,53 +207,55 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* ➕ Product Creation Form */}
-      <div className="max-w-md mt-12 space-y-3">
-        <h2 className="text-xl font-semibold">Add New Product</h2>
+      {/* ➕ Product Creation Form (Admins only) */}
+      {user?.role === "admin" && (
+        <div className="max-w-md mt-12 space-y-3">
+          <h2 className="text-xl font-semibold">Add New Product</h2>
 
-        {form.imageUrl && (
-          <img
-            src={form.imageUrl}
-            alt="Preview"
-            className="w-full h-40 object-cover rounded border"
-          />
-        )}
-
-        {Object.entries(form).map(([key, value]) =>
-          key !== "imageUrl" ? (
-            <input
-              key={key}
-              name={key}
-              value={value}
-              onChange={handleInput}
-              placeholder={key}
-              className="w-full p-2 border rounded"
+          {form.imageUrl && (
+            <img
+              src={form.imageUrl}
+              alt="Preview"
+              className="w-full h-40 object-cover rounded border"
             />
-          ) : null
-        )}
+          )}
 
-        <input
-          name="imageUrl"
-          value={form.imageUrl}
-          onChange={handleInput}
-          placeholder="Image URL"
-          className="w-full p-2 border rounded"
-        />
+          {Object.entries(form).map(([key, value]) =>
+            key !== "imageUrl" ? (
+              <input
+                key={key}
+                name={key}
+                value={value}
+                onChange={handleInput}
+                placeholder={key}
+                className="w-full p-2 border rounded"
+              />
+            ) : null
+          )}
 
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFile}
-          className="w-full p-2 border rounded"
-        />
+          <input
+            name="imageUrl"
+            value={form.imageUrl}
+            onChange={handleInput}
+            placeholder="Image URL"
+            className="w-full p-2 border rounded"
+          />
 
-        <button
-          onClick={addProduct}
-          className="bg-green-600 text-white px-4 py-2 rounded"
-        >
-          Add Product
-        </button>
-      </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFile}
+            className="w-full p-2 border rounded"
+          />
+
+          <button
+            onClick={addProduct}
+            className="bg-green-600 text-white px-4 py-2 rounded"
+          >
+            Add Product
+          </button>
+        </div>
+      )}
     </div>
   );
 }

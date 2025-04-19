@@ -2,12 +2,13 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const Product = require("./models/Product");
+const cors = require("cors");
+
+const { authenticateToken, requireAdmin } = require("./middleware/auth");
 
 const app = express();
-app.use(express.json());
-
-const cors = require("cors");
 app.use(cors());
+app.use(express.json());
 
 const PORT = process.env.PORT || 5002;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/products_db";
@@ -20,13 +21,14 @@ mongoose
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Routes
+// Public route – fetch all products
 app.get("/products", async (req, res) => {
   const products = await Product.find();
   res.json(products);
 });
 
-app.post("/products", async (req, res) => {
+// Admin-only – create product
+app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
   const { name, description, price, stock, category, imageUrl } = req.body;
   try {
     const product = await Product.create({ name, description, price, stock, category, imageUrl });
@@ -36,7 +38,7 @@ app.post("/products", async (req, res) => {
   }
 });
 
-// Get product by ID
+// Public – get product by ID
 app.get("/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -47,8 +49,8 @@ app.get("/products/:id", async (req, res) => {
   }
 });
 
-// Update product by ID
-app.put("/products/:id", async (req, res) => {
+// Admin-only – update product
+app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -61,8 +63,8 @@ app.put("/products/:id", async (req, res) => {
   }
 });
 
-// Delete product by ID
-app.delete("/products/:id", async (req, res) => {
+// Admin-only – delete product
+app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const deleted = await Product.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Product not found" });
@@ -72,7 +74,7 @@ app.delete("/products/:id", async (req, res) => {
   }
 });
 
-
+// Internal use (no auth) – for cross-service lookups
 app.get("/internal/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -82,4 +84,3 @@ app.get("/internal/products/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-

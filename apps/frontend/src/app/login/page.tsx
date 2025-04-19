@@ -35,7 +35,6 @@ const handleSubmit = async (e: React.FormEvent) => {
       throw new Error("Invalid login response: missing user or token");
     }
 
-    // Normalize _id to id
     const normalizedUser = {
       ...data.user,
       id: data.user._id || data.user.id,
