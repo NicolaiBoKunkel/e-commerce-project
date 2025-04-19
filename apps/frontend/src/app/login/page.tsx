@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/UserContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
+
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -13,30 +16,40 @@ export default function LoginPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-    try {
-      const res = await fetch("http://localhost:4000/user/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+  try {
+    const res = await fetch("http://localhost:4000/user/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Login failed");
 
-      // Save token to localStorage
-      localStorage.setItem("token", data.token);
-
-      setSuccess("Login successful! Redirecting to profile...");
-      setTimeout(() => router.push("/profile"), 1000);
-    } catch (err: any) {
-      setError(err.message);
+    if (!data.user || !data.token) {
+      throw new Error("Invalid login response: missing user or token");
     }
-  };
+
+    // Normalize _id to id
+    const normalizedUser = {
+      ...data.user,
+      id: data.user._id || data.user.id,
+    };
+
+    login(data.token, normalizedUser);
+
+    setSuccess("Login successful! Redirecting to profile...");
+    setTimeout(() => router.push("/profile"), 1000);
+  } catch (err: any) {
+    setError(err.message);
+  }
+};
+
 
   return (
     <div className="max-w-md mx-auto mt-12 p-6 border rounded-lg shadow">

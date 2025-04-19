@@ -70,12 +70,23 @@ app.post("/login", async (req, res) => {
       },
       JWT_SECRET,
       { expiresIn: "1h" }
-    );    
-    res.json({ token });
+    );
+
+    // ✅ Send both token and user in the response
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: "Login failed", error: err.message });
   }
 });
+
 
 
 app.get("/profile", authMiddleware, async (req, res) => {

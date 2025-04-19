@@ -1,13 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const Order = require("../models/Order");
-const validateOrder = require("../utils/validateExternal"); // ✅ Correct import
+const validateOrder = require("../utils/validateExternal");
 
 router.post("/", async (req, res) => {
   const { userId, products } = req.body;
 
   try {
-    const totalAmount = await validateOrder(userId, products); // ✅ validate both and compute total
+    const totalAmount = await validateOrder(userId, products);
 
     const newOrder = await Order.create({
       userId,

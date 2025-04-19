@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useCart } from "@/context/CartContext";
+import Link from "next/link";
 
 interface Product {
   _id: string;
@@ -15,6 +17,8 @@ interface Product {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quantities, setQuantities] = useState<{ [productId: string]: number }>({});
+  const { cart, addToCart } = useCart();
 
   const [form, setForm] = useState({
     name: "",
@@ -22,7 +26,7 @@ export default function ProductsPage() {
     price: "",
     category: "",
     stock: "",
-    imageUrl: "", // used for either base64 OR direct URL
+    imageUrl: "",
   });
 
   useEffect(() => {
@@ -88,7 +92,19 @@ export default function ProductsPage() {
     }
   };
 
+  const handleQuantityChange = (productId: string, value: number) => {
+    setQuantities((prev) => ({
+      ...prev,
+      [productId]: value,
+    }));
+  };
+
   if (loading) return <p>Loading...</p>;
+
+  const totalPrice = cart.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0
+  );
 
   return (
     <div className="p-8">
@@ -110,6 +126,28 @@ export default function ProductsPage() {
             <p className="text-sm text-gray-500">Category: {product.category}</p>
             <p className="text-lg font-bold">${product.price}</p>
             <p className="text-sm">Stock: {product.stock}</p>
+
+            <div className="flex gap-2 items-center mt-2">
+              <input
+                type="number"
+                min={1}
+                max={product.stock}
+                value={quantities[product._id] || 1}
+                onChange={(e) =>
+                  handleQuantityChange(product._id, parseInt(e.target.value, 10))
+                }
+                className="w-16 border p-1 rounded text-center"
+              />
+              <button
+                onClick={() =>
+                  addToCart(product, quantities[product._id] || 1)
+                }
+                className="bg-blue-600 text-white px-2 py-1 rounded"
+              >
+                Add to Cart
+              </button>
+            </div>
+
             <button
               onClick={() => deleteProduct(product._id)}
               className="absolute top-2 right-2 bg-red-500 text-white text-sm px-2 py-1 rounded"
@@ -120,10 +158,47 @@ export default function ProductsPage() {
         ))}
       </div>
 
-      <div className="max-w-md space-y-3">
+      {/* 🛒 Cart Summary */}
+      <div className="max-w-2xl mx-auto mt-8 border-t pt-6">
+        <h2 className="text-xl font-semibold mb-4">Cart</h2>
+        {cart.length === 0 ? (
+          <p>No items in cart.</p>
+        ) : (
+          <div className="space-y-4">
+            {cart.map((item) => (
+              <div
+                key={item.product._id}
+                className="flex justify-between items-center border-b pb-2"
+              >
+                <div>
+                  <p className="font-medium">{item.product.name}</p>
+                  <p className="text-sm text-gray-600">
+                    Quantity: {item.quantity}
+                  </p>
+                </div>
+                <p className="font-bold">
+                  ${(item.product.price * item.quantity).toFixed(2)}
+                </p>
+              </div>
+            ))}
+            <div className="flex justify-between font-semibold text-lg pt-2">
+              <span>Total:</span>
+              <span>${totalPrice.toFixed(2)}</span>
+            </div>
+            <Link
+              href="/order"
+              className="block text-center bg-green-600 text-white py-2 px-4 rounded mt-4"
+            >
+              View Order
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ➕ Product Creation Form */}
+      <div className="max-w-md mt-12 space-y-3">
         <h2 className="text-xl font-semibold">Add New Product</h2>
 
-        {/* Image preview (if any) */}
         {form.imageUrl && (
           <img
             src={form.imageUrl}
@@ -132,9 +207,8 @@ export default function ProductsPage() {
           />
         )}
 
-        {/* Text inputs */}
-        {Object.entries(form).map(([key, value]) => (
-          key !== "imageUrl" && (
+        {Object.entries(form).map(([key, value]) =>
+          key !== "imageUrl" ? (
             <input
               key={key}
               name={key}
@@ -143,10 +217,9 @@ export default function ProductsPage() {
               placeholder={key}
               className="w-full p-2 border rounded"
             />
-          )
-        ))}
+          ) : null
+        )}
 
-        {/* Image URL (manually entered) */}
         <input
           name="imageUrl"
           value={form.imageUrl}
@@ -155,7 +228,6 @@ export default function ProductsPage() {
           className="w-full p-2 border rounded"
         />
 
-        {/* File picker (overwrites imageUrl) */}
         <input
           type="file"
           accept="image/*"
