@@ -1,8 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const axios = require("axios");
 const Order = require("../models/Order");
 const validateOrder = require("../utils/validateExternal");
+const { publishEvent } = require("../rabbit");
 
+// CREATE order and publish notification event
 router.post("/", async (req, res) => {
   const { userId, products } = req.body;
 
@@ -15,13 +18,20 @@ router.post("/", async (req, res) => {
       totalAmount,
     });
 
+    // Publish RabbitMQ event for ORDER_PLACED
+    publishEvent({
+      type: "ORDER_PLACED",
+      userId,
+      message: `Your order #${newOrder.id} has been placed!`,
+    });
+
     res.status(201).json(newOrder);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-const axios = require("axios");
+// GET all orders (admin view)
 router.get("/", async (req, res) => {
   try {
     const orders = await Order.findAll();
@@ -43,7 +53,7 @@ router.get("/", async (req, res) => {
               const productRes = await axios.get(`http://product-service:5002/internal/products/${item.productId}`);
               return {
                 ...productRes.data,
-                quantity: item.quantity
+                quantity: item.quantity,
               };
             } catch (err) {
               console.warn(`Could not fetch product ${item.productId}:`, err.message);
@@ -51,7 +61,7 @@ router.get("/", async (req, res) => {
                 _id: item.productId,
                 name: "Unknown Product",
                 price: 0,
-                quantity: item.quantity
+                quantity: item.quantity,
               };
             }
           })
@@ -60,7 +70,7 @@ router.get("/", async (req, res) => {
         return {
           ...order.toJSON(),
           user: userInfo,
-          products: productsWithDetails
+          products: productsWithDetails,
         };
       })
     );
@@ -72,13 +82,14 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET single order by ID
 router.get("/:id", async (req, res) => {
   const order = await Order.findByPk(req.params.id);
   if (!order) return res.status(404).json({ message: "Order not found" });
   res.json(order);
 });
 
-
+// GET orders for a specific user
 router.get("/user/:userId", async (req, res) => {
   try {
     const orders = await Order.findAll({ where: { userId: req.params.userId } });
@@ -118,7 +129,5 @@ router.get("/user/:userId", async (req, res) => {
     res.status(500).json({ message: "Error retrieving user orders" });
   }
 });
-
-
 
 module.exports = router;

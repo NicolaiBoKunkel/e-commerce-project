@@ -13,12 +13,34 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   mongo:
-      image: mongo:6.0
-      restart: always
-      ports:
-        - "27017:27017"
-      volumes:
-        - mongo-data:/data/db
+    image: mongo:6.0
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:6.2
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   user-service:
     build: ./services/user-service
@@ -48,7 +70,6 @@ services:
     volumes:
       - ./services/product-service:/app
 
-
   order-service:
     build: ./services/order-service
     ports:
@@ -60,11 +81,14 @@ services:
       - DB_USER=user
       - DB_PASSWORD=password
       - DB_NAME=orders_db
+      - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
-      - postgres
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_started
     volumes:
       - ./services/order-service:/app
-
 
   notification-service:
     build: ./services/notification-service
@@ -72,19 +96,29 @@ services:
       - "5004:5004"
     environment:
       - PORT=5004
+      - RABBITMQ_URL=amqp://rabbitmq
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./services/notification-service:/app
 
   api-gateway:
     build: ./api-gateway
     ports:
       - "4000:4000"
+    environment:
+      - PORT=4000
     depends_on:
       - user-service
       - product-service
       - order-service
       - notification-service
-    environment:
-      - PORT=4000
 
 volumes:
   postgres-data:
   mongo-data:
+  redis-data:
