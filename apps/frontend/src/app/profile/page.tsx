@@ -92,6 +92,10 @@ export default function ProfilePage() {
               )}
 
               <p>
+                <strong>ID:</strong> {order.id}
+              </p>
+
+              <p>
                 <strong>Status:</strong> {order.status}
               </p>
               <p>
