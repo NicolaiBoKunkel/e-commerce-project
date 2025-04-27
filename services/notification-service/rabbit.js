@@ -22,13 +22,20 @@ async function startRabbitMQ() {
         return;
       }
 
-      const redisKey = `notifications:user:${userId}`;
-      await redis.lPush(redisKey, JSON.stringify({
+      const notification = {
         type,
         message,
         seen: false,
         timestamp: new Date().toISOString(),
-      }));
+      };
+
+      try {
+        const redisKey = `notifications:user:${userId}`;
+        await redis.lPush(redisKey, JSON.stringify(notification));
+        console.log(`Saved notification for user ${userId}`);
+      } catch (error) {
+        console.error("Failed to save notification:", error);
+      }
 
       channel.ack(msg);
     }

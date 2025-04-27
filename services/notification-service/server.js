@@ -8,12 +8,12 @@ app.use(express.json());
 
 app.use("/notifications", require("./routes/notifications"));
 
-app.get("/health", (req, res) => res.send("🔔 Notification Service Running"));
+app.get("/health", (req, res) => res.send("Notification Service Running"));
 
 const PORT = process.env.PORT || 5004;
 
 app.listen(PORT, async () => {
-  console.log(`🚀 Notification Service running on port ${PORT}`);
+  console.log(`Notification Service running on port ${PORT}`);
   await connectRedis();
   await startRabbitMQ();
 });
