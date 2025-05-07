@@ -130,4 +130,37 @@ router.get("/user/:userId", async (req, res) => {
   }
 });
 
+// UPDATE order status (e.g. to "shipped")
+router.put("/:orderId/status", async (req, res) => {
+  const { status } = req.body;
+  const orderId = req.params.orderId;
+
+  if (!["PENDING", "SHIPPED"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status value" });
+  }
+
+  try {
+    const order = await Order.findByPk(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    order.status = status;
+    await order.save();
+
+    // Only notify when it's changed to "shipped"
+    if (status === "shipped") {
+      publishEvent({
+        type: "ORDER_SHIPPED",
+        userId: order.userId,
+        message: `Your order #${order.id} has been shipped!`,
+      });
+    }
+
+    res.json(order);
+  } catch (err) {
+    console.error("Failed to update order status:", err.message);
+    res.status(500).json({ error: "Could not update order status" });
+  }
+});
+
+
 module.exports = router;
