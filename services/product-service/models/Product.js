@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema({
   category: String,
   stock: { type: Number, default: 0 },
   imageUrl: String,
+  isDeleted: { type: Boolean, default: false } // Tombstone flag
 }, { timestamps: true });
 
 module.exports = mongoose.model("Product", productSchema);

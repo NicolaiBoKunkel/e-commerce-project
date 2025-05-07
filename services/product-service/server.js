@@ -21,10 +21,16 @@ mongoose
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Public route – fetch all products
+// Public route – fetch all products (excluding deleted by default)
 app.get("/products", async (req, res) => {
-  const products = await Product.find();
-  res.json(products);
+  const includeDeleted = req.query.includeDeleted === "true";
+  const filter = includeDeleted ? {} : { isDeleted: false };
+  try {
+    const products = await Product.find(filter);
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Admin-only – create product
@@ -38,10 +44,10 @@ app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Public – get product by ID
+// Public – get product by ID (only if not deleted)
 app.get("/products/:id", async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json(product);
   } catch (err) {
@@ -63,18 +69,22 @@ app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Admin-only – delete product
+// Admin-only – soft delete product (tombstone)
 app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const deleted = await Product.findByIdAndDelete(req.params.id);
+    const deleted = await Product.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true },
+      { new: true }
+    );
     if (!deleted) return res.status(404).json({ message: "Product not found" });
-    res.json({ message: "Product deleted" });
+    res.json({ message: "Product marked as deleted" });
   } catch (err) {
     res.status(400).json({ message: "Delete failed", error: err.message });
   }
 });
 
-// Internal use (no auth) – for cross-service lookups
+// Internal use – allow cross-service lookups even for deleted
 app.get("/internal/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
