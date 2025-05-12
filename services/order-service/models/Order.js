@@ -15,8 +15,13 @@ const Order = sequelize.define("Order", {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM("PENDING", "SHIPPED",),
+    type: DataTypes.ENUM("PENDING", "SHIPPED"),
     defaultValue: "PENDING",
+  },
+  idempotencyKey: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: true,
   },
 });
 

@@ -7,18 +7,32 @@ const { publishEvent } = require("../rabbit");
 
 // CREATE order and publish notification event
 router.post("/", async (req, res) => {
-  const { userId, products } = req.body;
+  const { userId, products, idempotencyKey } = req.body;
 
   try {
+    // Step 1: Check if this key was already used
+    if (idempotencyKey) {
+      const existingOrder = await Order.findOne({ where: { idempotencyKey } });
+      if (existingOrder) {
+        return res.status(200).json({
+          message: "Duplicate request — returning existing order",
+          order: existingOrder,
+        });
+      }
+    }
+
+    // Step 2: Calculate total as usual
     const totalAmount = await validateOrder(userId, products);
 
+    // Step 3: Create the new order with the idempotency key
     const newOrder = await Order.create({
       userId,
       products,
       totalAmount,
+      idempotencyKey: idempotencyKey || null,
     });
 
-    // Publish RabbitMQ event for ORDER_PLACED
+    // Step 4: Publish event
     publishEvent({
       type: "ORDER_PLACED",
       userId,
@@ -30,6 +44,7 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // GET all orders (admin view)
 router.get("/", async (req, res) => {
