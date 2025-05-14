@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/UserContext";
 import { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 export default function OrderPage() {
   const { cart, clearCart } = useCart();
@@ -27,6 +28,8 @@ export default function OrderPage() {
       quantity: item.quantity,
     }));
 
+    const idempotencyKey = uuidv4(); // Generate the key
+
     setSubmitting(true);
 
     try {
@@ -36,16 +39,21 @@ export default function OrderPage() {
         body: JSON.stringify({
           userId: user.id,
           products,
+          idempotencyKey, // Add it to the request
         }),
       });
+
+      const result = await res.json();
 
       if (res.ok) {
         clearCart();
         alert("Order placed successfully!");
         router.push("/profile");
+      } else if (result.message?.includes("Duplicate")) {
+        alert("This order was already placed. Returning you to your profile.");
+        router.push("/profile");
       } else {
-        const errorData = await res.json();
-        alert(`Failed to place order: ${errorData.error}`);
+        alert(`Failed to place order: ${result.error || "Unknown error"}`);
       }
     } catch (err) {
       alert("Something went wrong while placing your order.");
@@ -54,6 +62,7 @@ export default function OrderPage() {
       setSubmitting(false);
     }
   };
+
 
   if (loading) return <p>Loading user info...</p>;
 
