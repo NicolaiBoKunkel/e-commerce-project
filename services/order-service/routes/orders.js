@@ -162,7 +162,7 @@ router.put("/:orderId/status", async (req, res) => {
     await order.save();
 
     // Only notify when it's changed to "shipped"
-    if (status === "shipped") {
+    if (status === "SHIPPED") {
       publishEvent({
         type: "ORDER_SHIPPED",
         userId: order.userId,
