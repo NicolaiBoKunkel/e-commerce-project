@@ -146,7 +146,7 @@ router.get("/user/:userId", async (req, res) => {
 });
 
 // UPDATE order status (e.g. to "shipped")
-router.put("/:orderId/status", async (req, res) => {
+router.patch("/:orderId/status", async (req, res) => {
   const { status } = req.body;
   const orderId = req.params.orderId;
 
@@ -163,10 +163,12 @@ router.put("/:orderId/status", async (req, res) => {
 
     // Only notify when it's changed to "shipped"
     if (status === "SHIPPED") {
+      console.log("Shipping products:", order.products); // ✅ Debug log added here
       publishEvent({
         type: "ORDER_SHIPPED",
         userId: order.userId,
         message: `Your order #${order.id} has been shipped!`,
+        products: order.products,
       });
     }
 
@@ -176,6 +178,7 @@ router.put("/:orderId/status", async (req, res) => {
     res.status(500).json({ error: "Could not update order status" });
   }
 });
+
 
 
 module.exports = router;

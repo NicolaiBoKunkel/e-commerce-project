@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(JSON.parse(savedUser));
     }
 
-    setLoading(false); // ✅ Set loading to false after localStorage is checked
+    setLoading(false); // Set loading to false after localStorage is checked
   }, []);
 
   const login = (newToken: string, userData: User) => {

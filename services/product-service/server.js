@@ -1,10 +1,11 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
-const Product = require("./models/Product");
 const cors = require("cors");
 
+const Product = require("./models/Product");
 const { authenticateToken, requireAdmin } = require("./middleware/auth");
+const { startRabbitMQ } = require("./rabbit");
 
 const app = express();
 app.use(cors());
@@ -15,9 +16,15 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/products_d
 
 mongoose
   .connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("Connected to MongoDB");
-    app.listen(PORT, () => console.log(`Product Service running on port ${PORT}`));
+
+    // Wait for RabbitMQ before starting the server
+    await startRabbitMQ();
+
+    app.listen(PORT, () => {
+      console.log(`Product Service running on port ${PORT}`);
+    });
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 

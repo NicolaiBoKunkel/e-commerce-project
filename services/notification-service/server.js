@@ -10,7 +10,7 @@ app.use(express.json());
 
 app.use("/notifications", require("./routes/notifications"));
 
-// ✅ GraphQL route
+// GraphQL route
 app.use("/graphql", graphqlHTTP({
   schema,
   graphiql: true, // Enable GraphiQL UI

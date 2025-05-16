@@ -65,10 +65,15 @@ services:
     environment:
       - PORT=5002
       - MONGO_URI=mongodb://mongo:27017/products_db
+      - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
-      - mongo
+      rabbitmq:
+        condition: service_healthy
+      mongo:
+        condition: service_started
     volumes:
       - ./services/product-service:/app
+
 
   order-service:
     build: ./services/order-service

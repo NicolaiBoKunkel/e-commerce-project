@@ -72,7 +72,7 @@ app.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    // ✅ Send both token and user in the response
+    // Send both token and user in the response
     res.json({
       token,
       user: {
