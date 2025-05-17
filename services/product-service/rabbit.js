@@ -24,16 +24,29 @@ async function startRabbitMQ() {
       }
 
       if (event.type === "ORDER_SHIPPED" && Array.isArray(event.products)) {
+        const failedProducts = [];
+
         for (const item of event.products) {
           try {
             const product = await Product.findById(item.productId);
             if (product && typeof item.quantity === "number") {
-              const original = product.stock;
-              product.stock = Math.max(product.stock - item.quantity, 0);
-              await product.save();
-              console.log(
-                `Reduced stock of '${product.name}' from ${original} to ${product.stock}`
-              );
+              if (product.stock >= item.quantity) {
+                const original = product.stock;
+                product.stock -= item.quantity;
+                await product.save();
+                console.log(
+                  `Reduced stock of '${product.name}' from ${original} to ${product.stock}`
+                );
+              } else {
+                console.warn(
+                  `Insufficient stock for '${product.name}' — requested: ${item.quantity}, available: ${product.stock}`
+                );
+                failedProducts.push({
+                  productId: item.productId,
+                  requested: item.quantity,
+                  available: product.stock,
+                });
+              }
             }
           } catch (err) {
             console.error(
@@ -41,6 +54,22 @@ async function startRabbitMQ() {
               err.message
             );
           }
+        }
+
+        // Publish compensation event if stock updates failed
+        if (failedProducts.length > 0) {
+          const compensationEvent = {
+            type: "STOCK_UPDATE_FAILED",
+            orderId: event.orderId || null,
+            userId: event.userId,
+            failedProducts,
+          };
+
+          channel.sendToQueue(queue, Buffer.from(JSON.stringify(compensationEvent)), {
+            persistent: true,
+          });
+
+          console.log("Published STOCK_UPDATE_FAILED event:", compensationEvent);
         }
       }
 

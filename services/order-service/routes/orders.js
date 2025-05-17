@@ -167,6 +167,7 @@ router.patch("/:orderId/status", async (req, res) => {
       publishEvent({
         type: "ORDER_SHIPPED",
         userId: order.userId,
+        orderId: order.id,
         message: `Your order #${order.id} has been shipped!`,
         products: order.products,
       });

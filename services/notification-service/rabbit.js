@@ -14,27 +14,37 @@ async function startRabbitMQ() {
       const event = JSON.parse(msg.content.toString());
       console.log("Event received:", event);
 
-      const { type, userId, message } = event;
+      const { type, userId, message, orderId, failedProducts } = event;
 
-      if (!userId || !message) {
-        console.warn("Missing fields in message:", event);
+      // Validate required fields based on type
+      if ((type === "ORDER_PLACED" || type === "ORDER_SHIPPED") && (!userId || !message)) {
+        console.warn("Missing fields in ORDER_PLACED/SHIPPED message:", event);
         channel.ack(msg);
         return;
       }
 
-      const notification = {
-        type,
-        message,
-        seen: false,
-        timestamp: new Date().toISOString(),
-      };
+      if (type === "STOCK_UPDATE_FAILED" && (!userId || !orderId || !failedProducts)) {
+        console.warn("Missing fields in STOCK_UPDATE_FAILED message:", event);
+        channel.ack(msg);
+        return;
+      }
 
-      try {
-        const redisKey = `notifications:user:${userId}`;
-        await redis.lPush(redisKey, JSON.stringify(notification));
-        console.log(`Saved notification for user ${userId}`);
-      } catch (error) {
-        console.error("Failed to save notification:", error);
+      // For ORDER_PLACED or ORDER_SHIPPED, create user-facing notification
+      if (type === "ORDER_PLACED" || type === "ORDER_SHIPPED") {
+        const notification = {
+          type,
+          message,
+          seen: false,
+          timestamp: new Date().toISOString(),
+        };
+
+        try {
+          const redisKey = `notifications:user:${userId}`;
+          await redis.lPush(redisKey, JSON.stringify(notification));
+          console.log(`Saved notification for user ${userId}`);
+        } catch (error) {
+          console.error("Failed to save notification:", error);
+        }
       }
 
       channel.ack(msg);
