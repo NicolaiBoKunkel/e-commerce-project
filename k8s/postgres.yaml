@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+        - name: initdb
+          configMap:
+            name: postgres-initdb
+      initContainers:
+        - name: init-db
+          image: postgres:15
+          env:
+            - name: PGPASSWORD
+              value: "password"
+          command: ["sh", "-c"]
+          args:
+            - |
+              until pg_isready -h localhost -U user; do
+                sleep 1;
+              done;
+              psql -h localhost -U user -f /docker-entrypoint-initdb.d/init-db.sql
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "user"
+            - name: POSTGRES_PASSWORD
+              value: "password"
+            - name: POSTGRES_DB
+              value: "users_db"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data

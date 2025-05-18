@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - protocol: TCP
+      port: 5003
+      targetPort: 5003
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5003
+          env:
+            - name: PORT
+              value: "5003"
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: user
+            - name: DB_PASSWORD
+              value: password
+            - name: DB_NAME
+              value: orders_db
+            - name: RABBITMQ_URL
+              value: amqp://rabbitmq
