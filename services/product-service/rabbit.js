@@ -1,14 +1,22 @@
 const amqp = require("amqplib");
 const Product = require("./models/Product");
 
+let channel;
+
 async function startRabbitMQ() {
   try {
-    const connection = await amqp.connect(process.env.RABBITMQ_URL);
-    const channel = await connection.createChannel();
-    const queue = "ORDER_EVENTS";
+    const connection = await amqp.connect(process.env.RABBITMQ_URL || "amqp://rabbitmq");
+    channel = await connection.createChannel();
 
+    // Setup fanout exchange
+    await channel.assertExchange("order_events", "fanout", { durable: true });
+
+    // Declare and bind a unique queue for product-service
+    const queue = "order_events_product";
     await channel.assertQueue(queue, { durable: true });
-    console.log(`Product Service listening to queue: ${queue}`);
+    await channel.bindQueue(queue, "order_events", "");
+
+    console.log(`Product Service listening to exchange via queue: ${queue}`);
 
     channel.consume(queue, async (msg) => {
       if (!msg) return;
@@ -34,9 +42,7 @@ async function startRabbitMQ() {
                 const original = product.stock;
                 product.stock -= item.quantity;
                 await product.save();
-                console.log(
-                  `Reduced stock of '${product.name}' from ${original} to ${product.stock}`
-                );
+                console.log(`Reduced stock of '${product.name}' from ${original} to ${product.stock}`);
               } else {
                 console.warn(
                   `Insufficient stock for '${product.name}' — requested: ${item.quantity}, available: ${product.stock}`
@@ -49,10 +55,7 @@ async function startRabbitMQ() {
               }
             }
           } catch (err) {
-            console.error(
-              `Failed to update stock for product ${item.productId}:`,
-              err.message
-            );
+            console.error(`Failed to update stock for product ${item.productId}:`, err.message);
           }
         }
 
@@ -65,7 +68,8 @@ async function startRabbitMQ() {
             failedProducts,
           };
 
-          channel.sendToQueue(queue, Buffer.from(JSON.stringify(compensationEvent)), {
+          // ✅ Publish to the fanout exchange
+          channel.publish("order_events", "", Buffer.from(JSON.stringify(compensationEvent)), {
             persistent: true,
           });
 

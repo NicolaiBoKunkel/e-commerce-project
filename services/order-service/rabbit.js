@@ -7,12 +7,19 @@ async function connectRabbitMQ() {
   try {
     const connection = await amqp.connect(process.env.RABBITMQ_URL || "amqp://rabbitmq");
     channel = await connection.createChannel();
-    await channel.assertQueue("ORDER_EVENTS", { durable: true });
+
+    // Setup fanout exchange
+    await channel.assertExchange("order_events", "fanout", { durable: true });
+
+    // Each service gets its own queue bound to the exchange
+    const queue = "order_events_order"; // unique queue name for order-service
+    await channel.assertQueue(queue, { durable: true });
+    await channel.bindQueue(queue, "order_events", "");
 
     console.log("Connected to RabbitMQ from order-service");
 
-    // Start consuming events (for compensation logic)
-    channel.consume("ORDER_EVENTS", async (msg) => {
+    channel.consume(queue, async (msg) => {
+      console.log("order-service: received raw message");
       if (!msg) return;
 
       let event;
@@ -25,14 +32,22 @@ async function connectRabbitMQ() {
         return;
       }
 
-      // Handle compensation if product-service fails to update stock
       if (event.type === "STOCK_UPDATE_FAILED" && event.orderId) {
+        console.log("order-service: handling STOCK_UPDATE_FAILED");
         try {
           const order = await Order.findByPk(event.orderId);
           if (order) {
             order.status = "FAILED";
             await order.save();
             console.log(`Order #${order.id} marked as FAILED due to stock update failure`);
+
+            // Optional: publish ORDER_FAILED notification
+            publishEvent({
+              type: "ORDER_FAILED",
+              userId: order.userId,
+              orderId: order.id,
+              message: `Order #${order.id} failed due to insufficient stock.`,
+            });
           } else {
             console.warn(`No order found with ID ${event.orderId}`);
           }
@@ -43,7 +58,6 @@ async function connectRabbitMQ() {
 
       channel.ack(msg);
     });
-
   } catch (err) {
     console.error("Failed to connect to RabbitMQ:", err.message);
   }
@@ -55,7 +69,8 @@ function publishEvent(event) {
     return;
   }
 
-  channel.sendToQueue("ORDER_EVENTS", Buffer.from(JSON.stringify(event)), {
+  // Publish to the exchange instead of a queue
+  channel.publish("order_events", "", Buffer.from(JSON.stringify(event)), {
     persistent: true,
   });
 }

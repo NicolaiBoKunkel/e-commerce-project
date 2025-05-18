@@ -2,23 +2,40 @@ const amqp = require("amqplib");
 const { redis } = require("./redis");
 
 async function startRabbitMQ() {
-  const connection = await amqp.connect(process.env.RABBITMQ_URL);
-  const channel = await connection.createChannel();
-  const queue = "ORDER_EVENTS";
+  try {
+    const connection = await amqp.connect(process.env.RABBITMQ_URL || "amqp://rabbitmq");
+    const channel = await connection.createChannel();
 
-  await channel.assertQueue(queue, { durable: true });
-  console.log(`Listening to queue: ${queue}`);
+    // Use the fanout exchange
+    await channel.assertExchange("order_events", "fanout", { durable: true });
 
-  channel.consume(queue, async (msg) => {
-    if (msg !== null) {
-      const event = JSON.parse(msg.content.toString());
-      console.log("Event received:", event);
+    // Declare and bind a queue just for this service
+    const queue = "order_events_notification";
+    await channel.assertQueue(queue, { durable: true });
+    await channel.bindQueue(queue, "order_events", "");
+
+    console.log(`Notification Service listening to exchange via queue: ${queue}`);
+
+    channel.consume(queue, async (msg) => {
+      if (!msg) return;
+
+      let event;
+      try {
+        event = JSON.parse(msg.content.toString());
+        console.log("Event received:", event);
+      } catch (err) {
+        console.warn("Failed to parse message:", err.message);
+        channel.ack(msg);
+        return;
+      }
 
       const { type, userId, message, orderId, failedProducts } = event;
 
-      // Validate required fields based on type
-      if ((type === "ORDER_PLACED" || type === "ORDER_SHIPPED") && (!userId || !message)) {
-        console.warn("Missing fields in ORDER_PLACED/SHIPPED message:", event);
+      if (
+        (["ORDER_PLACED", "ORDER_SHIPPED", "ORDER_FAILED"].includes(type) &&
+          (!userId || !message))
+      ) {
+        console.warn(`Missing fields in ${type} message:`, event);
         channel.ack(msg);
         return;
       }
@@ -29,8 +46,8 @@ async function startRabbitMQ() {
         return;
       }
 
-      // For ORDER_PLACED or ORDER_SHIPPED, create user-facing notification
-      if (type === "ORDER_PLACED" || type === "ORDER_SHIPPED") {
+      // Store user notification
+      if (["ORDER_PLACED", "ORDER_SHIPPED", "ORDER_FAILED"].includes(type)) {
         const notification = {
           type,
           message,
@@ -41,15 +58,17 @@ async function startRabbitMQ() {
         try {
           const redisKey = `notifications:user:${userId}`;
           await redis.lPush(redisKey, JSON.stringify(notification));
-          console.log(`Saved notification for user ${userId}`);
+          console.log(`Saved ${type} notification for user ${userId}`);
         } catch (error) {
           console.error("Failed to save notification:", error);
         }
       }
 
       channel.ack(msg);
-    }
-  });
+    });
+  } catch (err) {
+    console.error("Failed to start RabbitMQ consumer in notification-service:", err.message);
+  }
 }
 
 module.exports = { startRabbitMQ };
