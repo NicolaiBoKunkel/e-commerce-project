@@ -44,8 +44,12 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     setSuccess("Login successful! Redirecting to profile...");
     setTimeout(() => router.push("/profile"), 1000);
-  } catch (err: any) {
-    setError(err.message);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      setError(err.message);
+    } else {
+      setError("An unknown error occurred");
+    }
   }
 };
 
