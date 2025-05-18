@@ -1,4 +1,4 @@
-name: Build Frontend (Next.js)
+name: CI Pipeline
 
 on:
   push:
@@ -10,13 +10,37 @@ jobs:
   build-frontend:
     name: Build Next.js App
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: apps/frontend
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: 📦 Install frontend dependencies
+        run: npm ci
+
+      - name: ⚒️ Build Next.js app
+        run: npm run build
+
+  build-microservices:
+    name: Install for Microservices
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [user-service, product-service, order-service, notification-service]
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Node.js
@@ -27,5 +51,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build the Next.js app
-        run: npm run build
+      - name: No build step yet
+        run: echo "Skipping build for service: ${{ matrix.service }}"
