@@ -63,6 +63,40 @@ export default function ProfilePage() {
       .catch((err) => setError(err.message));
   }, [router]);
 
+  const markAsShipped = async (orderId: number) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://localhost:4000/order/order/${orderId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "shipped" }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update order");
+      }
+
+      // Update local state
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              orders: prev.orders.map((order) =>
+                order.id === orderId ? { ...order, status: "shipped" } : order
+              ),
+            }
+          : prev
+      );
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+
   if (error) return <p className="text-red-600 p-4">{error}</p>;
   if (!data) return <p className="p-4">Loading profile...</p>;
 
@@ -98,6 +132,16 @@ export default function ProfilePage() {
               <p>
                 <strong>Status:</strong> {order.status}
               </p>
+
+              {data.user.role === "admin" && order.status === "PENDING" && (
+                <button
+                  onClick={() => markAsShipped(order.id)}
+                  className="mt-2 bg-green-600 text-white px-3 py-1 rounded"
+                >
+                  Mark as Shipped
+                </button>
+              )}
+
               <p>
                 <strong>Total:</strong> ${order.totalAmount.toFixed(2)}
               </p>
