@@ -15,22 +15,22 @@ jobs:
         working-directory: apps/frontend
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: 🟢 Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: 📦 Install frontend dependencies
+      - name: Install frontend dependencies
         run: npm ci
 
-      - name: ⚒️ Build Next.js app
+      - name: Build Next.js app
         run: npm run build
 
-  build-microservices:
-    name: Install for Microservices
+  install-microservices:
+    name: Install Backend Microservices
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,7 +40,7 @@ jobs:
         working-directory: services/${{ matrix.service }}
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Node.js
@@ -51,5 +51,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: No build step yet
-        run: echo "Skipping build for service: ${{ matrix.service }}"
+      - name: Confirm service setup
+        run: echo "${{ matrix.service }} setup complete"
