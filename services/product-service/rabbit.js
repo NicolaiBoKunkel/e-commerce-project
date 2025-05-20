@@ -68,7 +68,7 @@ async function startRabbitMQ() {
             failedProducts,
           };
 
-          // ✅ Publish to the fanout exchange
+          // Publish to the fanout exchange
           channel.publish("order_events", "", Buffer.from(JSON.stringify(compensationEvent)), {
             persistent: true,
           });

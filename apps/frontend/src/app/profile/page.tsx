@@ -38,6 +38,7 @@ interface UserData {
 export default function ProfilePage() {
   const [data, setData] = useState<UserData | null>(null);
   const [error, setError] = useState("");
+  const [notification, setNotification] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -72,30 +73,48 @@ export default function ProfilePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: "shipped" }),
+        body: JSON.stringify({ status: "SHIPPED" }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to update order");
+        throw new Error(data.error || "Failed to update order");
       }
 
-      // Update local state
+      // 🔁 Re-fetch the order to get final, confirmed status (e.g., SHIPPED or FAILED)
+      const updatedRes = await fetch(`http://localhost:4000/order/order/${orderId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!updatedRes.ok) {
+        throw new Error("Failed to fetch updated order");
+      }
+
+      const updatedOrder = await updatedRes.json();
+
+      // ✅ Update local state with final confirmed order status
       setData((prev) =>
         prev
           ? {
               ...prev,
               orders: prev.orders.map((order) =>
-                order.id === orderId ? { ...order, status: "shipped" } : order
+                order.id === orderId
+                  ? { ...order, status: updatedOrder.status }
+                  : order
               ),
             }
           : prev
       );
+
+      setNotification(`✅ Order status: ${updatedOrder.status}`);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        alert(err.message);
+        setNotification(`❌ ${err.message}`);
       } else {
-        alert("An unknown error occurred");
+        setNotification("❌ An unknown error occurred");
       }
     }
   };
@@ -113,6 +132,12 @@ export default function ProfilePage() {
       <h2 className="text-2xl mt-8 mb-2 font-semibold">
         {data.user.role === "admin" ? "All Orders:" : "Your Orders:"}
       </h2>
+
+      {notification && (
+        <div className="bg-blue-600 text-white p-2 rounded shadow mb-4">
+          {notification}
+        </div>
+      )}
 
       {data.orders.length === 0 ? (
         <p>No orders yet.</p>

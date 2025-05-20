@@ -4,6 +4,7 @@ const axios = require("axios");
 const Order = require("../models/Order");
 const validateOrder = require("../utils/validateExternal");
 const { publishEvent } = require("../rabbit");
+const { authenticateToken, requireAdmin } = require("../middleware/auth");
 
 // CREATE order and publish notification event
 router.post("/", async (req, res) => {
@@ -146,39 +147,43 @@ router.get("/user/:userId", async (req, res) => {
 });
 
 // UPDATE order status (e.g. to "shipped")
-router.patch("/:orderId/status", async (req, res) => {
-  const { status } = req.body;
-  const orderId = req.params.orderId;
+router.patch(
+  "/:orderId/status",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    const { status } = req.body;
+    const orderId = req.params.orderId;
 
-  if (!["PENDING", "SHIPPED"].includes(status)) {
-    return res.status(400).json({ error: "Invalid status value" });
-  }
-
-  try {
-    const order = await Order.findByPk(orderId);
-    if (!order) return res.status(404).json({ error: "Order not found" });
-
-    order.status = status;
-    await order.save();
-
-    // Only notify when it's changed to "shipped"
-    if (status === "SHIPPED") {
-      console.log("Shipping products:", order.products); // ✅ Debug log added here
-      publishEvent({
-        type: "ORDER_SHIPPED",
-        userId: order.userId,
-        orderId: order.id,
-        message: `Your order #${order.id} has been shipped!`,
-        products: order.products,
-      });
+    if (!["PENDING", "SHIPPED"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
     }
 
-    res.json(order);
-  } catch (err) {
-    console.error("Failed to update order status:", err.message);
-    res.status(500).json({ error: "Could not update order status" });
+    try {
+      const order = await Order.findByPk(orderId);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+
+      order.status = status;
+      await order.save();
+
+      if (status === "SHIPPED") {
+        publishEvent({
+          type: "ORDER_SHIPPED",
+          userId: order.userId,
+          orderId: order.id,
+          message: `Your order #${order.id} has been shipped!`,
+          products: order.products,
+        });
+      }
+
+      res.json(order);
+    } catch (err) {
+      console.error("Failed to update order status:", err.message);
+      res.status(500).json({ error: "Could not update order status" });
+    }
   }
-});
+);
+
 
 
 

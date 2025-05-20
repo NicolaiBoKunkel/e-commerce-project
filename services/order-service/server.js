@@ -11,7 +11,7 @@ app.use("/order", orderRoutes);
 const PORT = process.env.PORT || 5003;
 
 sequelize
-  .sync({ force: true })
+  .sync({})
   .then(async () => {
     console.log("Order DB synced");
     await connectRabbitMQ();
