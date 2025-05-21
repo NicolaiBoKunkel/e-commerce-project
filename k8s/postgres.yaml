@@ -8,7 +8,6 @@ spec:
   resources:
     requests:
       storage: 1Gi
-
 ---
 apiVersion: v1
 kind: Service
@@ -20,7 +19,6 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -43,22 +41,6 @@ spec:
         - name: initdb
           configMap:
             name: postgres-initdb
-      initContainers:
-        - name: init-db
-          image: postgres:15
-          env:
-            - name: PGPASSWORD
-              value: "password"
-          command: ["sh", "-c"]
-          args:
-            - |
-              until pg_isready -h localhost -U user; do
-                sleep 1;
-              done;
-              psql -h localhost -U user -f /docker-entrypoint-initdb.d/init-db.sql
-          volumeMounts:
-            - name: initdb
-              mountPath: /docker-entrypoint-initdb.d
       containers:
         - name: postgres
           image: postgres:15
@@ -74,3 +56,5 @@ spec:
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
