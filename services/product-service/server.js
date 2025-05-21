@@ -31,14 +31,29 @@ mongoose
 // Public route – fetch all products (excluding deleted by default)
 app.get("/products", async (req, res) => {
   const includeDeleted = req.query.includeDeleted === "true";
-  const filter = includeDeleted ? {} : { isDeleted: false };
-  try {
-    const products = await Product.find(filter);
-    res.json(products);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+  if (includeDeleted) {
+    try {
+      // Check for valid JWT and admin role
+      await authenticateToken(req, res, async () => {
+        await requireAdmin(req, res, async () => {
+          const products = await Product.find({});
+          return res.json(products);
+        });
+      });
+    } catch (err) {
+      return res.status(403).json({ error: "Admin access required to view deleted products" });
+    }
+  } else {
+    try {
+      const products = await Product.find({ isDeleted: false });
+      res.json(products);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
+
 
 // Admin-only – create product
 app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
