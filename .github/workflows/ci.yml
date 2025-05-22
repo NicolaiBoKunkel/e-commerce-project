@@ -53,3 +53,7 @@ jobs:
 
       - name: Confirm service setup
         run: echo "${{ matrix.service }} setup complete"
+
+      - name: Run user-service tests
+        if: matrix.service == 'user-service'
+        run: npm test
