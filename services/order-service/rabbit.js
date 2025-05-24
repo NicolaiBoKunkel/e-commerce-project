@@ -41,7 +41,6 @@ async function connectRabbitMQ() {
             await order.save();
             console.log(`Order #${order.id} marked as FAILED due to stock update failure`);
 
-            // Optional: publish ORDER_FAILED notification
             publishEvent({
               type: "ORDER_FAILED",
               userId: order.userId,

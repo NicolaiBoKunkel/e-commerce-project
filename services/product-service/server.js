@@ -14,27 +14,33 @@ app.use(express.json());
 const PORT = process.env.PORT || 5002;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/products_db";
 
+/**
+ * Connects to MongoDB and starts the Express server
+ * after initializing RabbitMQ listeners.
+ */
 mongoose
   .connect(MONGO_URI)
   .then(async () => {
     console.log("Connected to MongoDB");
-
-    // Wait for RabbitMQ before starting the server
     await startRabbitMQ();
-
     app.listen(PORT, () => {
       console.log(`Product Service running on port ${PORT}`);
     });
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Public route – fetch all products (excluding deleted by default)
+/**
+ * @route GET /products
+ * @group Products - Fetch all non-deleted products or all if admin
+ * @param {boolean} includeDeleted.query - If true, includes deleted (admin only)
+ * @returns {Array.<Product>} 200 - List of products
+ * @returns {Error} 403 - Unauthorized access
+ */
 app.get("/products", async (req, res) => {
   const includeDeleted = req.query.includeDeleted === "true";
 
   if (includeDeleted) {
     try {
-      // Check for valid JWT and admin role
       await authenticateToken(req, res, async () => {
         await requireAdmin(req, res, async () => {
           const products = await Product.find({});
@@ -54,8 +60,13 @@ app.get("/products", async (req, res) => {
   }
 });
 
-
-// Admin-only – create product
+/**
+ * @route POST /products
+ * @group Products - Create a new product (admin only)
+ * @param {Product.model} body.body.required - Product data
+ * @returns {Product.model} 201 - Newly created product
+ * @returns {Error} 400 - Validation error
+ */
 app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
   const { name, description, price, stock, category, imageUrl } = req.body;
   try {
@@ -66,7 +77,13 @@ app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Public – get product by ID (only if not deleted)
+/**
+ * @route GET /products/:id
+ * @group Products - Get a product by ID
+ * @param {string} id.path.required - Product ID
+ * @returns {Product.model} 200 - Product data
+ * @returns {Error} 404 - Product not found
+ */
 app.get("/products/:id", async (req, res) => {
   try {
     const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
@@ -77,7 +94,14 @@ app.get("/products/:id", async (req, res) => {
   }
 });
 
-// Admin-only – update product
+/**
+ * @route PUT /products/:id
+ * @group Products - Update a product by ID (admin only)
+ * @param {string} id.path.required - Product ID
+ * @param {Product.model} body.body.required - Updated product data
+ * @returns {Product.model} 200 - Updated product
+ * @returns {Error} 404 - Product not found
+ */
 app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -91,7 +115,13 @@ app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Admin-only – soft delete product (tombstone)
+/**
+ * @route DELETE /products/:id
+ * @group Products - Soft delete a product (admin only)
+ * @param {string} id.path.required - Product ID
+ * @returns {string} 200 - Confirmation message
+ * @returns {Error} 404 - Product not found
+ */
 app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const deleted = await Product.findByIdAndUpdate(
@@ -106,7 +136,13 @@ app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
-// Internal use – allow cross-service lookups even for deleted
+/**
+ * @route GET /internal/products/:id
+ * @group Internal - Get any product (even deleted)
+ * @param {string} id.path.required - Product ID
+ * @returns {Product.model} 200 - Product data
+ * @returns {Error} 404 - Product not found
+ */
 app.get("/internal/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
