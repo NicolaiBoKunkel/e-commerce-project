@@ -6,13 +6,50 @@ const cors = require("cors");
 const Product = require("./models/Product");
 const { authenticateToken, requireAdmin } = require("./middleware/auth");
 const { startRabbitMQ } = require("./rabbit");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swaggerConfig");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve Swagger docs
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 const PORT = process.env.PORT || 5002;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/products_db";
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Product:
+ *       type: object
+ *       required:
+ *         - name
+ *         - price
+ *       properties:
+ *         _id:
+ *           type: string
+ *         name:
+ *           type: string
+ *         description:
+ *           type: string
+ *         price:
+ *           type: number
+ *         category:
+ *           type: string
+ *         stock:
+ *           type: number
+ *         imageUrl:
+ *           type: string
+ *         isDeleted:
+ *           type: boolean
+ *         createdAt:
+ *           type: string
+ *         updatedAt:
+ *           type: string
+ */
 
 /**
  * Connects to MongoDB and starts the Express server
@@ -25,16 +62,34 @@ mongoose
     await startRabbitMQ();
     app.listen(PORT, () => {
       console.log(`Product Service running on port ${PORT}`);
+      console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
     });
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
 /**
- * @route GET /products
- * @group Products - Fetch all non-deleted products or all if admin
- * @param {boolean} includeDeleted.query - If true, includes deleted (admin only)
- * @returns {Array.<Product>} 200 - List of products
- * @returns {Error} 403 - Unauthorized access
+ * @swagger
+ * /products:
+ *   get:
+ *     summary: Get all non-deleted products (admin can include deleted)
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: includeDeleted
+ *         schema:
+ *           type: boolean
+ *         description: Include soft-deleted products (admin only)
+ *     responses:
+ *       200:
+ *         description: List of products
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Product'
+ *       403:
+ *         description: Admin access required to view deleted products
  */
 app.get("/products", async (req, res) => {
   const includeDeleted = req.query.includeDeleted === "true";
@@ -61,11 +116,26 @@ app.get("/products", async (req, res) => {
 });
 
 /**
- * @route POST /products
- * @group Products - Create a new product (admin only)
- * @param {Product.model} body.body.required - Product data
- * @returns {Product.model} 201 - Newly created product
- * @returns {Error} 400 - Validation error
+ * @swagger
+ * /products:
+ *   post:
+ *     summary: Create a new product (admin only)
+ *     tags: [Products]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Product'
+ *     responses:
+ *       201:
+ *         description: Product created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       400:
+ *         description: Validation error
  */
 app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
   const { name, description, price, stock, category, imageUrl } = req.body;
@@ -78,11 +148,27 @@ app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 /**
- * @route GET /products/:id
- * @group Products - Get a product by ID
- * @param {string} id.path.required - Product ID
- * @returns {Product.model} 200 - Product data
- * @returns {Error} 404 - Product not found
+ * @swagger
+ * /products/{id}:
+ *   get:
+ *     summary: Get a product by ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       404:
+ *         description: Product not found
  */
 app.get("/products/:id", async (req, res) => {
   try {
@@ -95,12 +181,33 @@ app.get("/products/:id", async (req, res) => {
 });
 
 /**
- * @route PUT /products/:id
- * @group Products - Update a product by ID (admin only)
- * @param {string} id.path.required - Product ID
- * @param {Product.model} body.body.required - Updated product data
- * @returns {Product.model} 200 - Updated product
- * @returns {Error} 404 - Product not found
+ * @swagger
+ * /products/{id}:
+ *   put:
+ *     summary: Update a product by ID (admin only)
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Product ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Product'
+ *     responses:
+ *       200:
+ *         description: Updated product
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       404:
+ *         description: Product not found
  */
 app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -116,11 +223,23 @@ app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 /**
- * @route DELETE /products/:id
- * @group Products - Soft delete a product (admin only)
- * @param {string} id.path.required - Product ID
- * @returns {string} 200 - Confirmation message
- * @returns {Error} 404 - Product not found
+ * @swagger
+ * /products/{id}:
+ *   delete:
+ *     summary: Soft delete a product (admin only)
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product marked as deleted
+ *       404:
+ *         description: Product not found
  */
 app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -137,11 +256,27 @@ app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) =>
 });
 
 /**
- * @route GET /internal/products/:id
- * @group Internal - Get any product (even deleted)
- * @param {string} id.path.required - Product ID
- * @returns {Product.model} 200 - Product data
- * @returns {Error} 404 - Product not found
+ * @swagger
+ * /internal/products/{id}:
+ *   get:
+ *     summary: Internal lookup for any product (even deleted)
+ *     tags: [Internal]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       404:
+ *         description: Product not found
  */
 app.get("/internal/products/:id", async (req, res) => {
   try {

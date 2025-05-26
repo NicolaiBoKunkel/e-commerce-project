@@ -6,7 +6,7 @@ const NotificationType = new GraphQLObjectType({
   fields: {
     message: { type: GraphQLString },
     createdAt: { type: GraphQLString },
-    read: { type: GraphQLString }, // Optional field; adjust as needed
+    read: { type: GraphQLString },
   },
 });
 
