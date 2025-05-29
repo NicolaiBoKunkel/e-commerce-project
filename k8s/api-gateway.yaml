@@ -9,7 +9,7 @@ spec:
     - port: 4000
       targetPort: 4000
       protocol: TCP
-  type: LoadBalancer  # You can change to NodePort if LoadBalancer doesn't work in your setup
+  type: LoadBalancer
 
 ---
 
