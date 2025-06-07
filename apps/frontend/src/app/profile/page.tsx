@@ -109,12 +109,12 @@ export default function ProfilePage() {
           : prev
       );
 
-      setNotification(`✅ Order status: ${updatedOrder.status}`);
+      setNotification(`Order status: ${updatedOrder.status}`);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setNotification(`❌ ${err.message}`);
+        setNotification(`${err.message}`);
       } else {
-        setNotification("❌ An unknown error occurred");
+        setNotification("An unknown error occurred");
       }
     }
   };

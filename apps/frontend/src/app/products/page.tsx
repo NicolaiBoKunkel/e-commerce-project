@@ -213,7 +213,7 @@ export default function ProductsPage() {
                   </p>
                 </div>
                 <p className="font-bold">
-                  ${(item.product.price * item.quantity).toFixed(2)}
+                  DKK{(item.product.price * item.quantity).toFixed(2)}
                 </p>
               </div>
             ))}
