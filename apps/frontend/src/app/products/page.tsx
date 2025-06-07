@@ -13,6 +13,7 @@ interface Product {
   category: string;
   stock: number;
   imageUrl: string;
+  isDeleted?: boolean;
 }
 
 export default function ProductsPage() {
@@ -32,7 +33,15 @@ export default function ProductsPage() {
   });
 
   useEffect(() => {
-    fetch("http://localhost:4000/product/products")
+    const url = user?.role === "admin"
+      ? "http://localhost:4000/product/products?includeDeleted=true"
+      : "http://localhost:4000/product/products";
+
+    fetch(url, {
+      headers: user?.role === "admin" && token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+    })
       .then((res) => res.json())
       .then((data) => {
         setProducts(data);
@@ -42,7 +51,7 @@ export default function ProductsPage() {
         console.error("Failed to fetch products", err);
         setLoading(false);
       });
-  }, []);
+  }, [user, token]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -121,56 +130,71 @@ export default function ProductsPage() {
       <h1 className="text-2xl font-bold mb-6">All Products</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        {products.map((product) => (
-          <div
-            key={product._id}
-            className="border rounded-lg shadow-md p-4 space-y-2 relative"
-          >
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="w-full h-40 object-cover rounded"
-            />
-            <h2 className="text-xl font-semibold">{product.name}</h2>
-            <p>{product.description}</p>
-            <p className="text-sm text-gray-500">Category: {product.category}</p>
-            <p className="text-lg font-bold">${product.price}</p>
-            <p className="text-sm">Stock: {product.stock}</p>
+        {products.map((product) => {
+          const isDeleted = product.isDeleted;
 
-            <div className="flex gap-2 items-center mt-2">
-              <input
-                type="number"
-                min={1}
-                max={product.stock}
-                value={quantities[product._id] || 1}
-                onChange={(e) =>
-                  handleQuantityChange(product._id, parseInt(e.target.value, 10))
-                }
-                className="w-16 border p-1 rounded text-center"
+          return (
+            <div
+              key={product._id}
+              className="border rounded-lg shadow-md p-4 space-y-2 relative"
+            >
+              {/* Badge for deleted products */}
+              {isDeleted && user?.role === "admin" && (
+                <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
+                  Soft deleted
+                </div>
+              )}
+
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="w-full h-40 object-cover rounded"
               />
-              <button
-                onClick={() =>
-                  addToCart(product, quantities[product._id] || 1)
-                }
-                className="bg-blue-600 text-white px-2 py-1 rounded"
-              >
-                Add to Cart
-              </button>
-            </div>
+              <h2 className="text-xl font-semibold">{product.name}</h2>
+              <p>{product.description}</p>
+              <p className="text-sm text-gray-500">Category: {product.category}</p>
+              <p className="text-lg font-bold">${product.price}</p>
+              <p className="text-sm">Stock: {product.stock}</p>
 
-            {user?.role === "admin" && (
-              <button
-                onClick={() => deleteProduct(product._id)}
-                className="absolute top-2 right-2 bg-red-500 text-white text-sm px-2 py-1 rounded"
-              >
-                Delete
-              </button>
-            )}
-          </div>
-        ))}
+              {/* 🛒 Only allow adding to cart if not deleted */}
+              {!isDeleted && (
+                <div className="flex gap-2 items-center mt-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={product.stock}
+                    value={quantities[product._id] || 1}
+                    onChange={(e) =>
+                      handleQuantityChange(product._id, parseInt(e.target.value, 10))
+                    }
+                    className="w-16 border p-1 rounded text-center"
+                  />
+                  <button
+                    onClick={() =>
+                      addToCart(product, quantities[product._id] || 1)
+                    }
+                    className="bg-blue-600 text-white px-2 py-1 rounded"
+                  >
+                    Add to Cart
+                  </button>
+                </div>
+              )}
+
+              {/* Delete button for admins */}
+              {user?.role === "admin" && !product.isDeleted && (
+                <button
+                  onClick={() => deleteProduct(product._id)}
+                  className="absolute top-2 right-2 bg-red-500 text-white text-sm px-2 py-1 rounded"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* 🛒 Cart Summary */}
+      {/* Cart Summary */}
       <div className="max-w-2xl mx-auto mt-8 border-t pt-6">
         <h2 className="text-xl font-semibold mb-4">Cart</h2>
         {cart.length === 0 ? (
@@ -207,7 +231,7 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* ➕ Product Creation Form (Admins only) */}
+      {/* Product Creation Form (Admins only) */}
       {user?.role === "admin" && (
         <div className="max-w-md mt-12 space-y-3">
           <h2 className="text-xl font-semibold">Add New Product</h2>
