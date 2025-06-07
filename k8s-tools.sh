@@ -23,6 +23,9 @@ restart_pods() {
   kubectl delete pod -l app=order-service
   kubectl delete pod -l app=notification-service
   kubectl delete pod -l app=api-gateway
+  # Prometheus and Grafana don't need rebuilt images, but included for consistency
+  kubectl delete pod -l app=prometheus
+  kubectl delete pod -l app=grafana
   echo "Pods deleted. Kubernetes will recreate them automatically."
 }
 
