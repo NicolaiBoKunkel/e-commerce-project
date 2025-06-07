@@ -1,3 +1,4 @@
+# ConfigMap for Prometheus scrape configuration
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -23,6 +24,8 @@ data:
           - targets: ['api-gateway:4000']
 
 ---
+
+# Prometheus service
 apiVersion: v1
 kind: Service
 metadata:
@@ -34,7 +37,10 @@ spec:
     - port: 9090
       targetPort: 9090
   type: ClusterIP
+
 ---
+
+# Prometheus deployment with persistent volume
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,7 +63,26 @@ spec:
           volumeMounts:
             - name: prometheus-config-volume
               mountPath: /etc/prometheus/
+            - name: prometheus-data
+              mountPath: /prometheus
       volumes:
         - name: prometheus-config-volume
           configMap:
             name: prometheus-config
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: prometheus-pvc
+
+---
+
+# PersistentVolumeClaim for Prometheus data storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
