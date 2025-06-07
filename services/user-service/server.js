@@ -8,7 +8,6 @@ const cors = require("cors");
 const { sequelize, connectWithRetry } = require("./sequelize");
 const User = require("./models/User");
 
-
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -16,8 +15,39 @@ app.use(express.json());
 const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
-// Fake in-memory database
-const users = [];
+// Prometheus metrics setup
+const client = require("prom-client");
+const register = new client.Registry();
+
+// Enable default metrics (CPU, memory, etc.)
+client.collectDefaultMetrics({ register });
+
+// Custom metric: count all HTTP requests by method/route/status
+const httpRequestCounter = new client.Counter({
+  name: "http_requests_total",
+  help: "Total number of HTTP requests",
+  labelNames: ["method", "route", "status"],
+});
+register.registerMetric(httpRequestCounter);
+
+// Count each request
+app.use((req, res, next) => {
+  res.on("finish", () => {
+    httpRequestCounter.inc({
+      method: req.method,
+      route: req.route?.path || req.path,
+      status: res.statusCode,
+    });
+  });
+  next();
+});
+
+// Expose /metrics endpoint
+app.get("/metrics", async (req, res) => {
+  res.setHeader("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -49,7 +79,6 @@ app.post("/register", async (req, res) => {
   }
 });
 
-
 // Login
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -72,7 +101,6 @@ app.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    // Send both token and user in the response
     res.json({
       token,
       user: {
@@ -87,18 +115,15 @@ app.post("/login", async (req, res) => {
   }
 });
 
-
-
+// Profile route
 app.get("/profile", authMiddleware, async (req, res) => {
   try {
     let orders;
 
     if (req.user.role === "admin") {
-      // Admin gets all orders
       const response = await axios.get(`http://order-service:5003/order`);
       orders = response.data;
     } else {
-      // Regular user gets only their orders
       const response = await axios.get(`http://order-service:5003/order/user/${req.user.id}`);
       orders = response.data;
     }
@@ -114,12 +139,10 @@ app.get("/profile", authMiddleware, async (req, res) => {
   }
 });
 
-
 // Health check
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "user-service" });
 });
-
 
 app.get("/internal/users/:id", async (req, res) => {
   const user = await User.findByPk(req.params.id);
@@ -127,7 +150,7 @@ app.get("/internal/users/:id", async (req, res) => {
   res.json(user);
 });
 
-
+// DB connect & start
 connectWithRetry().then(() => {
   return sequelize.sync();
 }).then(() => {

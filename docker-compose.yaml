@@ -123,6 +123,14 @@ services:
       - order-service
       - notification-service
 
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
 volumes:
   postgres-data:
   mongo-data:
