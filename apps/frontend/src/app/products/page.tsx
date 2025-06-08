@@ -157,7 +157,7 @@ export default function ProductsPage() {
               <img
                 src={`http://localhost:4000/product${product.imageUrl}`}
                 alt={product.name}
-                className="w-full h-40 object-cover rounded"
+                className="w-full h-40 object-contain rounded bg-white"
               />
               <h2 className="text-xl font-semibold">{product.name}</h2>
               <p>{product.description}</p>
