@@ -12,9 +12,12 @@ async function connectRabbitMQ() {
     await channel.assertExchange("order_events", "fanout", { durable: true });
 
     // Each service gets its own queue bound to the exchange
-    const queue = "order_events_order"; // unique queue name for order-service
+    const queue = "order_events_order";
     await channel.assertQueue(queue, { durable: true });
     await channel.bindQueue(queue, "order_events", "");
+
+    await channel.assertQueue("order_events_notification", { durable: true });
+    await channel.bindQueue("order_events_notification", "order_events", "");
 
     console.log("Connected to RabbitMQ from order-service");
 
