@@ -54,8 +54,8 @@ jobs:
       - name: Confirm service setup
         run: echo "${{ matrix.service }} setup complete"
 
-      - name: Run user-service tests
-        if: matrix.service == 'user-service'
+      - name: Run service tests
+        if: matrix.service == 'user-service' || matrix.service == 'product-service'
         run: npm test
 
       - name: Log in to Docker Hub
