@@ -93,7 +93,7 @@ export default function OrderPage() {
 
           <div className="flex justify-between font-semibold text-lg pt-4">
             <span>Total:</span>
-            <span>${totalPrice.toFixed(2)}</span>
+            <span>DKK{totalPrice.toFixed(2)}</span>
           </div>
 
           <button

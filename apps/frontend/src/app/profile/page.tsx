@@ -172,7 +172,7 @@ export default function ProfilePage() {
               )}
 
               <p>
-                <strong>Total:</strong> ${order.totalAmount.toFixed(2)}
+                <strong>Total:</strong> DKK{order.totalAmount.toFixed(2)}
               </p>
               <p>
                 <strong>Ordered:</strong>{" "}

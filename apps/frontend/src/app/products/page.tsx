@@ -153,7 +153,7 @@ export default function ProductsPage() {
               <h2 className="text-xl font-semibold">{product.name}</h2>
               <p>{product.description}</p>
               <p className="text-sm text-gray-500">Category: {product.category}</p>
-              <p className="text-lg font-bold">${product.price}</p>
+              <p className="text-lg font-bold">{product.price} Kr.</p>
               <p className="text-sm">Stock: {product.stock}</p>
 
               {!isDeleted && (
@@ -216,7 +216,7 @@ export default function ProductsPage() {
             ))}
             <div className="flex justify-between font-semibold text-lg pt-2">
               <span>Total:</span>
-              <span>${totalPrice.toFixed(2)}</span>
+              <span>DKK{totalPrice.toFixed(2)}</span>
             </div>
             <Link
               href="/order"
