@@ -16,6 +16,15 @@ interface Product {
   isDeleted?: boolean;
 }
 
+type ProductForm = {
+  name: string;
+  description: string;
+  price: string;
+  category: string;
+  stock: string;
+  imageFile: File | null;
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,13 +32,13 @@ export default function ProductsPage() {
   const { cart, addToCart } = useCart();
   const { user, token } = useAuth();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProductForm>({
     name: "",
     description: "",
     price: "",
     category: "",
     stock: "",
-    imageFile: null as File | null,
+    imageFile: null,
   });
 
   useEffect(() => {
@@ -71,7 +80,7 @@ export default function ProductsPage() {
     formData.append("price", form.price);
     formData.append("category", form.category);
     formData.append("stock", form.stock);
-    formData.append("image", form.imageFile); // key must match multer's .single("image")
+    formData.append("image", form.imageFile);
 
     const res = await fetch("http://localhost:4000/product/products", {
       method: "POST",
@@ -146,7 +155,7 @@ export default function ProductsPage() {
               )}
 
               <img
-                src={`http://localhost:4000/product${product.imageUrl}`} // ensure correct path
+                src={`http://localhost:4000/product${product.imageUrl}`}
                 alt={product.name}
                 className="w-full h-40 object-cover rounded"
               />
@@ -240,11 +249,11 @@ export default function ProductsPage() {
             />
           )}
 
-          {["name", "description", "price", "category", "stock"].map((key) => (
+          {(["name", "description", "price", "category", "stock"] as Array<keyof ProductForm>).map((key) => (
             <input
               key={key}
               name={key}
-              value={(form as any)[key]}
+              value={form[key] as string}
               onChange={handleInput}
               placeholder={key}
               className="w-full p-2 border rounded"
