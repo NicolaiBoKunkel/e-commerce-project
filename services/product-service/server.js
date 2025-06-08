@@ -14,7 +14,7 @@ const swaggerSpec = require("./swaggerConfig");
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // still good for other JSON routes
+app.use(express.json({ limit: "10mb" }));
 
 // Serve uploaded images statically
 const uploadDir = path.join(__dirname, "uploads");
@@ -35,23 +35,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Swagger
+// Swagger docs
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-const PORT = process.env.PORT || 5002;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/products_db";
-
-mongoose
-  .connect(MONGO_URI)
-  .then(async () => {
-    console.log("Connected to MongoDB");
-    await startRabbitMQ();
-    app.listen(PORT, () => {
-      console.log(`Product Service running on port ${PORT}`);
-      console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
-    });
-  })
-  .catch((err) => console.error("MongoDB connection error:", err));
 
 // Routes
 
@@ -145,3 +130,23 @@ app.get("/internal/products/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Start server if not in test mode
+const PORT = process.env.PORT || 5002;
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/products_db";
+
+if (process.env.NODE_ENV !== "test") {
+  mongoose
+    .connect(MONGO_URI)
+    .then(async () => {
+      console.log("Connected to MongoDB");
+      await startRabbitMQ();
+      app.listen(PORT, () => {
+        console.log(`Product Service running on port ${PORT}`);
+        console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
+      });
+    })
+    .catch((err) => console.error("MongoDB connection error:", err));
+}
+
+module.exports = app;

@@ -95,7 +95,6 @@ export default function ProfilePage() {
 
       const updatedOrder = await updatedRes.json();
 
-      // ✅ Update local state with final confirmed order status
       setData((prev) =>
         prev
           ? {
@@ -109,7 +108,7 @@ export default function ProfilePage() {
           : prev
       );
 
-      setNotification(`Order status: ${updatedOrder.status}`);
+      setNotification(`Order ID: ${updatedOrder.id} Status changed to: ${updatedOrder.status}`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setNotification(`${err.message}`);
