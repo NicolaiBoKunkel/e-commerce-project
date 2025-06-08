@@ -29,8 +29,8 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: api-gateway:latest
-          imagePullPolicy: IfNotPresent
+          image: likrotdb2025/api-gateway:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 4000
           env:

@@ -18,8 +18,8 @@ spec:
   selector:
     app: grafana
   ports:
-    - port: 3000
-      targetPort: 3000
+    - port: 3003
+      targetPort: 3003
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -38,6 +38,7 @@ spec:
       containers:
         - name: grafana
           image: grafana/grafana
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           volumeMounts:

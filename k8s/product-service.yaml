@@ -15,7 +15,7 @@ spec:
       containers:
         - name: product-service
           image: likrotdb2025/product-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 5002
           env:
