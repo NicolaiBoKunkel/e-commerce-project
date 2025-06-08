@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: product-service
-          image: product-service:latest
+          image: likrotdb2025/product-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5002
@@ -27,7 +27,7 @@ spec:
               value: "amqp://rabbitmq"
           volumeMounts:
             - name: uploads-volume
-              mountPath: /app/uploads # 👈 match your multer storage path
+              mountPath: /app/uploads
       volumes:
         - name: uploads-volume
           persistentVolumeClaim:
