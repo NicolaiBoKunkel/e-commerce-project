@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: user-service:latest
-          imagePullPolicy: IfNotPresent
+          image: likrotdb2025/user-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5001
           env:
