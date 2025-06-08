@@ -2,6 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const Product = require("./models/Product");
 const { authenticateToken, requireAdmin } = require("./middleware/auth");
@@ -11,50 +14,33 @@ const swaggerSpec = require("./swaggerConfig");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // still good for other JSON routes
 
-// Serve Swagger docs
+// Serve uploaded images statically
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+app.use("/uploads", express.static(uploadDir));
+
+// Multer storage config
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+// Swagger
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const PORT = process.env.PORT || 5002;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/products_db";
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Product:
- *       type: object
- *       required:
- *         - name
- *         - price
- *       properties:
- *         _id:
- *           type: string
- *         name:
- *           type: string
- *         description:
- *           type: string
- *         price:
- *           type: number
- *         category:
- *           type: string
- *         stock:
- *           type: number
- *         imageUrl:
- *           type: string
- *         isDeleted:
- *           type: boolean
- *         createdAt:
- *           type: string
- *         updatedAt:
- *           type: string
- */
-
-/**
- * Connects to MongoDB and starts the Express server
- * after initializing RabbitMQ listeners.
- */
 mongoose
   .connect(MONGO_URI)
   .then(async () => {
@@ -67,30 +53,8 @@ mongoose
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
-/**
- * @swagger
- * /products:
- *   get:
- *     summary: Get all non-deleted products (admin can include deleted)
- *     tags: [Products]
- *     parameters:
- *       - in: query
- *         name: includeDeleted
- *         schema:
- *           type: boolean
- *         description: Include soft-deleted products (admin only)
- *     responses:
- *       200:
- *         description: List of products
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Product'
- *       403:
- *         description: Admin access required to view deleted products
- */
+// Routes
+
 app.get("/products", async (req, res) => {
   const includeDeleted = req.query.includeDeleted === "true";
 
@@ -115,61 +79,26 @@ app.get("/products", async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /products:
- *   post:
- *     summary: Create a new product (admin only)
- *     tags: [Products]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Product'
- *     responses:
- *       201:
- *         description: Product created
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Product'
- *       400:
- *         description: Validation error
- */
-app.post("/products", authenticateToken, requireAdmin, async (req, res) => {
-  const { name, description, price, stock, category, imageUrl } = req.body;
+app.post("/products", authenticateToken, requireAdmin, upload.single("image"), async (req, res) => {
   try {
-    const product = await Product.create({ name, description, price, stock, category, imageUrl });
+    const { name, description, price, stock, category } = req.body;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+    const product = await Product.create({
+      name,
+      description,
+      price,
+      stock,
+      category,
+      imageUrl
+    });
+
     res.status(201).json(product);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-/**
- * @swagger
- * /products/{id}:
- *   get:
- *     summary: Get a product by ID
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Product ID
- *     responses:
- *       200:
- *         description: Product data
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Product'
- *       404:
- *         description: Product not found
- */
 app.get("/products/:id", async (req, res) => {
   try {
     const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
@@ -180,35 +109,6 @@ app.get("/products/:id", async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /products/{id}:
- *   put:
- *     summary: Update a product by ID (admin only)
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Product ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Product'
- *     responses:
- *       200:
- *         description: Updated product
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Product'
- *       404:
- *         description: Product not found
- */
 app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -222,25 +122,6 @@ app.put("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /products/{id}:
- *   delete:
- *     summary: Soft delete a product (admin only)
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Product ID
- *     responses:
- *       200:
- *         description: Product marked as deleted
- *       404:
- *         description: Product not found
- */
 app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const deleted = await Product.findByIdAndUpdate(
@@ -255,29 +136,6 @@ app.delete("/products/:id", authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
-/**
- * @swagger
- * /internal/products/{id}:
- *   get:
- *     summary: Internal lookup for any product (even deleted)
- *     tags: [Internal]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Product ID
- *     responses:
- *       200:
- *         description: Product data
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Product'
- *       404:
- *         description: Product not found
- */
 app.get("/internal/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);

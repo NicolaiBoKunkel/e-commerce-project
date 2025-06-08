@@ -29,7 +29,7 @@ export default function ProductsPage() {
     price: "",
     category: "",
     stock: "",
-    imageUrl: "",
+    imageFile: null as File | null,
   });
 
   useEffect(() => {
@@ -58,44 +58,45 @@ export default function ProductsPage() {
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result?.toString() || "";
-      setForm((prev) => ({ ...prev, imageUrl: base64 }));
-    };
-    reader.readAsDataURL(file);
+    const file = e.target.files?.[0] || null;
+    setForm((prev) => ({ ...prev, imageFile: file }));
   };
 
   const addProduct = async () => {
+    if (!form.imageFile) return alert("Please upload an image");
+
+    const formData = new FormData();
+    formData.append("name", form.name);
+    formData.append("description", form.description);
+    formData.append("price", form.price);
+    formData.append("category", form.category);
+    formData.append("stock", form.stock);
+    formData.append("image", form.imageFile); // key must match multer's .single("image")
+
     const res = await fetch("http://localhost:4000/product/products", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(form),
+      body: formData,
     });
-  
+
     if (res.ok) {
       const newProduct = await res.json();
       setProducts((prev) => [...prev, newProduct]);
-  
       setForm({
         name: "",
         description: "",
         price: "",
         category: "",
         stock: "",
-        imageUrl: "",
+        imageFile: null,
       });
     } else {
       alert("Failed to add product");
     }
   };
-  
+
   const deleteProduct = async (id: string) => {
     const res = await fetch(`http://localhost:4000/product/products/${id}`, {
       method: "DELETE",
@@ -103,13 +104,13 @@ export default function ProductsPage() {
         Authorization: `Bearer ${token}`
       },
     });
-  
+
     if (res.ok) {
       setProducts((prev) => prev.filter((p) => p._id !== id));
     } else {
       alert("Failed to delete product");
     }
-  };  
+  };
 
   const handleQuantityChange = (productId: string, value: number) => {
     setQuantities((prev) => ({
@@ -138,7 +139,6 @@ export default function ProductsPage() {
               key={product._id}
               className="border rounded-lg shadow-md p-4 space-y-2 relative"
             >
-              {/* Badge for deleted products */}
               {isDeleted && user?.role === "admin" && (
                 <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
                   Soft deleted
@@ -146,7 +146,7 @@ export default function ProductsPage() {
               )}
 
               <img
-                src={product.imageUrl}
+                src={`http://localhost:4000/product${product.imageUrl}`} // ensure correct path
                 alt={product.name}
                 className="w-full h-40 object-cover rounded"
               />
@@ -156,7 +156,6 @@ export default function ProductsPage() {
               <p className="text-lg font-bold">${product.price}</p>
               <p className="text-sm">Stock: {product.stock}</p>
 
-              {/* 🛒 Only allow adding to cart if not deleted */}
               {!isDeleted && (
                 <div className="flex gap-2 items-center mt-2">
                   <input
@@ -180,7 +179,6 @@ export default function ProductsPage() {
                 </div>
               )}
 
-              {/* Delete button for admins */}
               {user?.role === "admin" && !product.isDeleted && (
                 <button
                   onClick={() => deleteProduct(product._id)}
@@ -194,7 +192,6 @@ export default function ProductsPage() {
         })}
       </div>
 
-      {/* Cart Summary */}
       <div className="max-w-2xl mx-auto mt-8 border-t pt-6">
         <h2 className="text-xl font-semibold mb-4">Cart</h2>
         {cart.length === 0 ? (
@@ -231,39 +228,28 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Product Creation Form (Admins only) */}
       {user?.role === "admin" && (
         <div className="max-w-md mt-12 space-y-3">
           <h2 className="text-xl font-semibold">Add New Product</h2>
 
-          {form.imageUrl && (
+          {form.imageFile && (
             <img
-              src={form.imageUrl}
+              src={URL.createObjectURL(form.imageFile)}
               alt="Preview"
               className="w-full h-40 object-cover rounded border"
             />
           )}
 
-          {Object.entries(form).map(([key, value]) =>
-            key !== "imageUrl" ? (
-              <input
-                key={key}
-                name={key}
-                value={value}
-                onChange={handleInput}
-                placeholder={key}
-                className="w-full p-2 border rounded"
-              />
-            ) : null
-          )}
-
-          <input
-            name="imageUrl"
-            value={form.imageUrl}
-            onChange={handleInput}
-            placeholder="Image URL"
-            className="w-full p-2 border rounded"
-          />
+          {["name", "description", "price", "category", "stock"].map((key) => (
+            <input
+              key={key}
+              name={key}
+              value={(form as any)[key]}
+              onChange={handleInput}
+              placeholder={key}
+              className="w-full p-2 border rounded"
+            />
+          ))}
 
           <input
             type="file"
