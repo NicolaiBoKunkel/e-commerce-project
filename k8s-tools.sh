@@ -1,13 +1,26 @@
 #!/bin/bash
 
+DOCKER_USER="likrotdb2025"
+
 build_services() {
-  echo "Building Docker images..."
-  docker build -t user-service:latest ./services/user-service
-  docker build -t product-service:latest ./services/product-service
-  docker build -t order-service:latest ./services/order-service
-  docker build -t notification-service:latest ./services/notification-service
-  docker build -t api-gateway:latest ./api-gateway
-  echo "Done building images."
+  echo "Building and pushing Docker images to Docker Hub..."
+
+  docker build -t $DOCKER_USER/user-service:latest ./services/user-service
+  docker push $DOCKER_USER/user-service:latest
+
+  docker build -t $DOCKER_USER/product-service:latest ./services/product-service
+  docker push $DOCKER_USER/product-service:latest
+
+  docker build -t $DOCKER_USER/order-service:latest ./services/order-service
+  docker push $DOCKER_USER/order-service:latest
+
+  docker build -t $DOCKER_USER/notification-service:latest ./services/notification-service
+  docker push $DOCKER_USER/notification-service:latest
+
+  docker build -t $DOCKER_USER/api-gateway:latest ./api-gateway
+  docker push $DOCKER_USER/api-gateway:latest
+
+  echo "All images built and pushed."
 }
 
 apply_k8s() {
@@ -17,15 +30,15 @@ apply_k8s() {
 }
 
 restart_pods() {
-  echo "Restarting pods to load new images..."
-  kubectl delete pod -l app=user-service
-  kubectl delete pod -l app=product-service
-  kubectl delete pod -l app=order-service
-  kubectl delete pod -l app=notification-service
-  kubectl delete pod -l app=api-gateway
-  kubectl delete pod -l app=prometheus
-  kubectl delete pod -l app=grafana
-  echo "Pods deleted. Kubernetes will recreate them automatically."
+  echo "Rolling out new deployments..."
+  kubectl rollout restart deployment/user-service
+  kubectl rollout restart deployment/product-service
+  kubectl rollout restart deployment/order-service
+  kubectl rollout restart deployment/notification-service
+  kubectl rollout restart deployment/api-gateway
+  kubectl rollout restart deployment/prometheus || echo "Prometheus not found."
+  kubectl rollout restart deployment/grafana || echo "Grafana not found."
+  echo "Deployments restarted."
 }
 
 teardown() {
@@ -37,9 +50,9 @@ teardown() {
 show_help() {
   echo "Usage: ./k8s-tools.sh [command]"
   echo "Available commands:"
-  echo "  build       Build all Docker service images"
+  echo "  build       Build & push Docker images to Docker Hub"
   echo "  apply       Apply Kubernetes configuration"
-  echo "  restart     Restart all service pods"
+  echo "  restart     Restart deployments (pull latest image)"
   echo "  teardown    Delete all Kubernetes resources"
   echo "  all         Run build, apply, and restart in sequence"
 }

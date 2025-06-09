@@ -4,7 +4,7 @@ const { redis } = require("./redis");
 async function startRabbitMQ() {
   const queue = "order_events_notification";
   const exchange = "order_events";
-  const retryInterval = 5000; // Retry every 5 seconds
+  const retryInterval = 5000;
 
   async function tryConnect() {
     try {
@@ -72,7 +72,7 @@ async function startRabbitMQ() {
     }
   }
 
-  tryConnect(); // Start the first attempt
+  tryConnect();
 }
 
 module.exports = { startRabbitMQ };
