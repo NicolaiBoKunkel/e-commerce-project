@@ -5,7 +5,7 @@ const Order = require("../models/Order");
 const validateOrder = require("../utils/validateExternal");
 const { publishEvent } = require("../rabbit");
 const { authenticateToken, requireAdmin } = require("../middleware/auth");
-const { orderStatusCounter } = require("../metrics"); // ✅ Import metrics
+const { orderStatusCounter } = require("../metrics");
 
 // CREATE order and publish notification event
 router.post("/", async (req, res) => {
