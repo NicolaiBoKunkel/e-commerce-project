@@ -5,13 +5,13 @@ const Order = require("../models/Order");
 const validateOrder = require("../utils/validateExternal");
 const { publishEvent } = require("../rabbit");
 const { authenticateToken, requireAdmin } = require("../middleware/auth");
+const { orderStatusCounter } = require("../metrics"); // ✅ Import metrics
 
 // CREATE order and publish notification event
 router.post("/", async (req, res) => {
   const { userId, products, idempotencyKey } = req.body;
 
   try {
-    // Step 1: Check if this key was already used
     if (idempotencyKey) {
       const existingOrder = await Order.findOne({ where: { idempotencyKey } });
       if (existingOrder) {
@@ -22,10 +22,8 @@ router.post("/", async (req, res) => {
       }
     }
 
-    // Step 2: Calculate total as usual
     const totalAmount = await validateOrder(userId, products);
 
-    // Step 3: Create the new order with the idempotency key
     const newOrder = await Order.create({
       userId,
       products,
@@ -33,7 +31,8 @@ router.post("/", async (req, res) => {
       idempotencyKey: idempotencyKey || null,
     });
 
-    // Step 4: Publish event
+    orderStatusCounter.inc({ status: "PENDING" });
+
     publishEvent({
       type: "ORDER_PLACED",
       userId,
@@ -45,7 +44,6 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // GET all orders (admin view)
 router.get("/", async (req, res) => {
@@ -167,6 +165,8 @@ router.patch(
       await order.save();
 
       if (status === "SHIPPED") {
+        orderStatusCounter.inc({ status: "SHIPPED" });
+
         publishEvent({
           type: "ORDER_SHIPPED",
           userId: order.userId,
@@ -183,8 +183,5 @@ router.patch(
     }
   }
 );
-
-
-
 
 module.exports = router;

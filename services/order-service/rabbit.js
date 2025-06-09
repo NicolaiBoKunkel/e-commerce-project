@@ -1,5 +1,6 @@
 const amqp = require("amqplib");
 const Order = require("./models/Order");
+const { orderStatusCounter } = require("./metrics");
 
 let channel;
 
@@ -42,6 +43,9 @@ async function connectRabbitMQ() {
           if (order) {
             order.status = "FAILED";
             await order.save();
+
+            orderStatusCounter.inc({ status: "FAILED" });
+
             console.log(`Order #${order.id} marked as FAILED due to stock update failure`);
 
             publishEvent({

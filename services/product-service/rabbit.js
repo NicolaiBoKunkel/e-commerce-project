@@ -1,5 +1,6 @@
 const amqp = require("amqplib");
 const Product = require("./models/Product");
+const { stockUpdateFailures } = require("./metrics");
 
 let channel;
 
@@ -48,6 +49,9 @@ async function startRabbitMQ() {
                   console.warn(
                     `Insufficient stock for '${product.name}' — requested: ${item.quantity}, available: ${product.stock}`
                   );
+
+                  stockUpdateFailures.inc();
+
                   failedProducts.push({
                     productId: item.productId,
                     requested: item.quantity,

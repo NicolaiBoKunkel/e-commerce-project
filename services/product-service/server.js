@@ -12,9 +12,31 @@ const { startRabbitMQ } = require("./rabbit");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swaggerConfig");
 
+const { register, httpRequestCounter } = require("./metrics"); 
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+app.use((req, res, next) => {
+  res.on("finish", () => {
+    httpRequestCounter.inc({
+      method: req.method,
+      route: req.path,
+      status: res.statusCode
+    });
+  });
+  next();
+});
+
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
+  }
+});
 
 // Serve uploaded images statically
 const uploadDir = path.join(__dirname, "uploads");
