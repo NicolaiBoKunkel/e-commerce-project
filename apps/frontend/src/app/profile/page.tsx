@@ -171,7 +171,7 @@ export default function ProfilePage() {
               )}
 
               <p>
-                <strong>Total:</strong> DKK{order.totalAmount.toFixed(2)}
+                <strong>Total:</strong> Kr. {order.totalAmount.toFixed(2)}
               </p>
               <p>
                 <strong>Ordered:</strong>{" "}
@@ -183,7 +183,7 @@ export default function ProfilePage() {
                 <ul className="list-disc pl-6 mt-1">
                   {order.products.map((product) => (
                     <li key={product._id}>
-                      {product.name} — ${product.price.toFixed(2)} × {product.quantity}
+                      {product.name} — Kr. {product.price.toFixed(2)} × {product.quantity}
                     </li>
                   ))}
                 </ul>

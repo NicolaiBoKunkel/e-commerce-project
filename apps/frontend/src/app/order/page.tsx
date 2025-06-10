@@ -39,7 +39,7 @@ export default function OrderPage() {
         body: JSON.stringify({
           userId: user.id,
           products,
-          idempotencyKey, // Add it to the request
+          idempotencyKey, 
         }),
       });
 
@@ -86,14 +86,14 @@ export default function OrderPage() {
                 </p>
               </div>
               <p className="font-bold">
-                ${(item.product.price * item.quantity).toFixed(2)}
+                Kr. {(item.product.price * item.quantity).toFixed(2)}
               </p>
             </div>
           ))}
 
           <div className="flex justify-between font-semibold text-lg pt-4">
             <span>Total:</span>
-            <span>DKK{totalPrice.toFixed(2)}</span>
+            <span>Kr. {totalPrice.toFixed(2)}</span>
           </div>
 
           <button
